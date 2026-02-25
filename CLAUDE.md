@@ -5,6 +5,15 @@ Spec-Driven Development workflow for a 2-person frontend team.
 Uses OpenSpec for specifications and Claude Code skills for GitHub-driven execution.
 
 ## Workflow
+
+### From PRD (PO hands off a PRD file)
+1. PO writes a PRD in `docs/prds/<feature-name>.md` using the template at `docs/prd-template.md`
+2. Run `/sdd-from-prd <feature-name>` — reads PRD, generates OpenSpec specs, creates GitHub issues
+3. Run `/sdd-work <issue-number>` to pick up a ticket, create a branch, and develop it
+4. Run `/sdd-verify` to review your work and create a PR
+5. After all tickets are done, run `/opsx:archive` to archive the change and update living specs
+
+### From scratch (no PRD, developer-driven)
 1. Run `/opsx:propose "feature description"` to create specs in `openspec/changes/<name>/`
 2. Review the generated proposal.md, specs/, design.md, and tasks.md
 3. Run `/sdd-create-tickets <change-name>` to create GitHub issues from the tasks
@@ -34,7 +43,8 @@ Uses OpenSpec for specifications and Claude Code skills for GitHub-driven execut
 - Issue mappings: `.tasks/<change-name>.md`
 - SDD skills: `.claude/skills/sdd-*/SKILL.md`
 - OpenSpec skills: `.claude/skills/openspec-*/SKILL.md`
-- Legacy PRD template: `docs/prd-template.md` (optional reference)
+- PRD template: `docs/prd-template.md`
+- PRDs: `docs/prds/<feature-name>.md`
 
 ## Commands
 - `npm test` — Run tests
