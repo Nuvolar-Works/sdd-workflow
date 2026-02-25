@@ -2,14 +2,15 @@
 
 ## Overview
 Spec-Driven Development workflow for a 2-person frontend team.
-Automates: PRD → tasks → GitHub issues → AI-driven development → verified PRs.
+Uses OpenSpec for specifications and Claude Code skills for GitHub-driven execution.
 
 ## Workflow
-1. Write a PRD in `docs/prds/<feature-name>.md` using the template at `docs/prd-template.md`
-2. Run `/sdd-parse-prd <feature-name>` to generate structured tasks in `.tasks/<feature-name>.md`
-3. Run `/sdd-create-tickets <feature-name>` to create GitHub issues from those tasks
+1. Run `/opsx:propose "feature description"` to create specs in `openspec/changes/<name>/`
+2. Review the generated proposal.md, specs/, design.md, and tasks.md
+3. Run `/sdd-create-tickets <change-name>` to create GitHub issues from the tasks
 4. Run `/sdd-work <issue-number>` to pick up a ticket, create a branch, and develop it
 5. Run `/sdd-verify` to review your work and create a PR
+6. After all tickets are done, run `/opsx:archive` to archive the change and update living specs
 
 ## Git Conventions
 - Conventional commits: `type(scope): description`
@@ -28,10 +29,12 @@ Automates: PRD → tasks → GitHub issues → AI-driven development → verifie
 - PRs must reference the issue they close using `Closes #<number>`
 
 ## File Locations
-- PRD template: `docs/prd-template.md`
-- PRDs: `docs/prds/<feature-name>.md`
-- Parsed tasks: `.tasks/<feature-name>.md`
-- Skills: `.claude/skills/sdd-*/SKILL.md`
+- OpenSpec living specs: `openspec/specs/` (domain documentation, grows over time)
+- OpenSpec changes: `openspec/changes/<change-name>/` (proposal, specs, design, tasks)
+- Issue mappings: `.tasks/<change-name>.md`
+- SDD skills: `.claude/skills/sdd-*/SKILL.md`
+- OpenSpec skills: `.claude/skills/openspec-*/SKILL.md`
+- Legacy PRD template: `docs/prd-template.md` (optional reference)
 
 ## Commands
 - `npm test` — Run tests

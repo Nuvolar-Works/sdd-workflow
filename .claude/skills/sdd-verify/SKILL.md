@@ -3,7 +3,6 @@ name: sdd-verify
 description: Verify the current branch's work against its ticket acceptance criteria and create a pull request
 argument-hint: "[issue-number]"
 disable-model-invocation: true
-allowed-tools: Read, Grep, Glob, Bash
 ---
 
 # Verify and Create Pull Request
