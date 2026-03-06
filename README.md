@@ -96,7 +96,7 @@ docs/prds/my-app.md              (PO writes this)
 |---------|-------|-------------|
 | `/sdd-from-prd <feature>` | Feature name matching a file in `docs/prds/` | Full pipeline: reads PRD, generates OpenSpec specs, creates GitHub issues. One command from PRD to tickets. |
 | `/sdd-create-tickets <change>` | OpenSpec change name | Reads OpenSpec artifacts from `openspec/changes/<change>/`, creates GitHub issues with GIVEN-WHEN-THEN acceptance criteria, updates task file with issue numbers. |
-| `/sdd-work <issue#>` | GitHub issue number | Fetches the issue, researches the codebase, presents an implementation plan for approval, creates a feature branch, implements, commits with conventional commits. |
+| `/sdd-work <issue#>` | GitHub issue number | Fetches the issue, auto-detects linked OpenSpec change for richer context (design, specs, stage awareness), researches the codebase, presents an implementation plan for approval, creates a feature branch, implements, commits with conventional commits, marks task complete in OpenSpec. |
 | `/sdd-staged <feature>` | Feature name matching a file in `docs/prds/` | Staged pipeline: reads PRD, proposes development stages, generates per-stage OpenSpec specs, creates cross-referenced GitHub issues with dependency tracking. |
 | `/sdd-verify [issue#]` | Optional issue number (auto-detected from branch) | Checks each acceptance criterion against the code, runs tests/lint/build, and if everything passes creates a PR with `Closes #<issue>`. |
 
@@ -220,15 +220,17 @@ This runs the full pipeline:
 The agent will:
 1. **Read** the GitHub issue (description, acceptance criteria, hints)
 2. **Check** if blocking dependencies are still open
-3. **Research** the codebase (find related files, existing patterns)
-4. **Present** an implementation plan and **wait for your approval**
-5. **Create** a branch: `feat/42-add-login-form`
-6. **Implement** the changes following existing codebase patterns
-7. **Run** tests, lint, build (if configured)
-8. **Commit** with conventional commits: `feat(auth): add login form (#42)`
-9. **Verify** each acceptance criterion is met
+3. **Detect** linked OpenSpec change (via `Source:` footer in issue body) and read proposal, design, and spec artifacts for richer context. For staged workflows, it also reads the stage map and identifies what prior stages built.
+4. **Research** the codebase (find related files, existing patterns)
+5. **Present** an implementation plan (including OpenSpec context if available) and **wait for your approval**
+6. **Create** a branch: `feat/42-add-login-form`
+7. **Implement** the changes following existing codebase patterns
+8. **Run** tests, lint, build (if configured)
+9. **Commit** with conventional commits: `feat(auth): add login form (#42)`
+10. **Verify** each acceptance criterion is met
+11. **Mark task complete** in OpenSpec `tasks.md` (if linked change was detected)
 
-The agent will not write code until you approve the plan.
+The agent will not write code until you approve the plan. If the issue was created manually (no OpenSpec link), steps 3 and 11 are skipped automatically.
 
 ### 4. Verifying and Creating a PR
 

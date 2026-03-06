@@ -39,6 +39,7 @@ Uses OpenSpec for specifications and Claude Code skills for GitHub-driven execut
 ## Code Conventions
 - Follow existing patterns in the codebase
 - When implementing a ticket, read the full GitHub issue body first
+- `/sdd-work` automatically detects linked OpenSpec changes (via the `Source:` footer in issue bodies) and reads proposal, design, and spec artifacts for richer context. It also marks tasks complete in tasks.md after implementation.
 - Check for related files before creating new ones
 
 ## GitHub

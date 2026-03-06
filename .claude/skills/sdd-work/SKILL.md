@@ -28,20 +28,42 @@ The issue number is: $ARGUMENTS
 
 3. **Check for blocking dependencies**. If the issue body references dependencies that are still open, warn the user and ask whether to proceed anyway.
 
+4. **Detect linked OpenSpec change**. Look for a `Source:` line at the bottom of the issue body:
+   ```
+   Source: openspec/changes/<CHANGE_NAME>/tasks.md
+   ```
+   - If found, extract `<CHANGE_NAME>` and announce: "Linked OpenSpec change detected: `<CHANGE_NAME>`"
+   - If not found, skip to Phase 2 — this issue was created manually and the rest of the workflow works as before.
+
+## Phase 1.5: Read OpenSpec Context (only if a linked change was detected)
+
+5. **Read the OpenSpec artifacts** for richer implementation context:
+   - `openspec/changes/<CHANGE_NAME>/proposal.md` — overall goals and context
+   - `openspec/changes/<CHANGE_NAME>/design.md` — architecture, patterns, API integration
+   - `openspec/changes/<CHANGE_NAME>/specs/*.md` — GIVEN-WHEN-THEN acceptance scenarios
+
+   These supplement the issue body. The issue body defines the scope for THIS task; the artifacts provide cross-task design rationale.
+
+6. **Check for stage context**. If the issue body contains a `## Stage Context` section:
+   - Extract the feature name and stage number
+   - Read `.tasks/<feature>-stages.md` for the full stage map
+   - Identify what prior stages produced (components, services, types, routes) so you can reuse them
+   - If cross-stage dependencies reference issues that are still open, warn the user
+
 ## Phase 2: Research the Codebase
 
-4. **Explore the project structure** to understand existing patterns:
+7. **Explore the project structure** to understand existing patterns:
    - Use Glob to find relevant files by name and extension
    - Use Grep to search for related code, imports, or patterns
    - Read key files that will be affected by this change
 
-5. **Identify**:
+8. **Identify**:
    - Which existing files need to be modified
    - Which new files need to be created
    - What existing patterns to follow (component structure, naming, imports)
    - What tests exist that might need updating
 
-6. **Present your implementation plan** to the user:
+9. **Present your implementation plan** to the user:
    ```
    ## Implementation Plan for #<number>: <title>
 
@@ -54,6 +76,12 @@ The issue number is: $ARGUMENTS
    ### Approach:
    <Brief description of implementation approach>
 
+   ### OpenSpec Context (if linked change was detected):
+   - Change: <change-name>
+   - Design approach: <key points from design.md>
+   - Related specs: <spec files with key scenarios relevant to this task>
+   - Prior stages: <what earlier stages built that this task can reuse>
+
    ### Risks or open questions:
    <Any concerns>
    ```
@@ -63,27 +91,27 @@ The issue number is: $ARGUMENTS
 
 ## Phase 3: Implement
 
-7. **Create a feature branch** from the current branch:
+10. **Create a feature branch** from the current branch:
    ```bash
    git checkout -b <type>/$ARGUMENTS-<short-description>
    ```
    Use the issue's label to determine the type (feat, fix, chore, etc.).
    Derive a kebab-case short description from the issue title.
 
-8. **Implement the changes** following the plan:
-   - Make code changes following existing codebase patterns
-   - Add or update tests if acceptance criteria require it
-   - Keep changes focused on what the ticket asks for — no scope creep
+11. **Implement the changes** following the plan:
+    - Make code changes following existing codebase patterns
+    - Add or update tests if acceptance criteria require it
+    - Keep changes focused on what the ticket asks for — no scope creep
 
-9. **Run project checks** if configured:
-   ```bash
-   npm test 2>&1 || true
-   npm run lint 2>&1 || true
-   npm run build 2>&1 || true
-   ```
-   Fix any issues these surface.
+12. **Run project checks** if configured:
+    ```bash
+    npm test 2>&1 || true
+    npm run lint 2>&1 || true
+    npm run build 2>&1 || true
+    ```
+    Fix any issues these surface.
 
-10. **Stage and commit** using conventional commits:
+13. **Stage and commit** using conventional commits:
     ```bash
     git add <specific-files>
     git commit -m "<type>(<scope>): <description> (#$ARGUMENTS)"
@@ -93,11 +121,13 @@ The issue number is: $ARGUMENTS
     - Always include the issue reference `(#N)` at the end
     - Make commits granular — one logical change per commit, not one giant commit
 
-11. **After implementation**, go through each acceptance criterion and verify it is met. Report the status of each one to the user.
+14. **After implementation**, go through each acceptance criterion and verify it is met. Report the status of each one to the user.
+
+15. **Mark task complete in OpenSpec** (only if a linked change was detected). Find the matching task line in `openspec/changes/<CHANGE_NAME>/tasks.md` (match by issue number `#$ARGUMENTS` or task description) and change `- [ ]` to `- [x]`. This keeps OpenSpec status in sync.
 
 ## Phase 4: Hand Off
 
-12. **Tell the user** the implementation is complete and suggest:
+16. **Tell the user** the implementation is complete and suggest:
     ```
     Implementation complete! Run /sdd-verify to review the changes and create a PR.
     ```
