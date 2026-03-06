@@ -28,23 +28,41 @@ The PRD file is at: `docs/prds/$ARGUMENTS.md`
    - Technical Considerations
    - Dependencies
 
+4. **Check for an API Contract reference** in the PRD:
+   - Look for an `## API Contract` section.
+   - If the section is missing or empty, skip this step entirely — the rest of the pipeline works unchanged.
+   - If present, extract the reference (file path or URL).
+     - **If a local file path**: Read the file. If not found, warn the user and ask whether to proceed without it.
+     - **If a URL**: Fetch the content using WebFetch. If the fetch fails, warn the user and ask whether to proceed without it.
+   - **Parse the Swagger/OpenAPI content** and extract an API Summary:
+     - API title, version, and base URL / servers
+     - Authentication / security schemes (e.g., Bearer token, API key)
+     - List of endpoints: method, path, summary, request body schema (key fields), response schema (key fields)
+     - Shared data models / schemas referenced by multiple endpoints
+   - Hold this **API Summary** in context alongside the PRD content. This summary — not the raw Swagger file — is what gets fed into artifact generation.
+
 ## Phase 2: Generate OpenSpec Artifacts
 
-4. **Derive a change name** from the feature name in kebab-case (e.g., `user-auth` stays `user-auth`, `User Authentication` becomes `user-authentication`).
+5. **Derive a change name** from the feature name in kebab-case (e.g., `user-auth` stays `user-auth`, `User Authentication` becomes `user-authentication`).
 
-5. **Create the OpenSpec change**:
+6. **Create the OpenSpec change**:
    ```bash
    openspec new change "$CHANGE_NAME"
    ```
    If a change with that name already exists, ask the user whether to continue it or create a new one with a different name.
 
-6. **Get the artifact build order**:
+7. **If an API Contract was found in Phase 1**, copy the Swagger file into the change folder:
+   - **If local file**: Copy it to `openspec/changes/$CHANGE_NAME/api-contract.yaml` (or `.json`, matching the source extension).
+   - **If URL**: Write the fetched content to `openspec/changes/$CHANGE_NAME/api-contract.yaml` (or `.json`).
+   - This file is a reference artifact for developers — it is NOT processed by openspec, just kept alongside the other artifacts.
+
+8. **Get the artifact build order**:
    ```bash
    openspec status --change "$CHANGE_NAME" --json
    ```
    Parse the JSON to get the `applyRequires` array and the `artifacts` list with their statuses and dependencies.
 
-7. **Generate each artifact in dependency order**. For each artifact that is `ready`:
+9. **Generate each artifact in dependency order**. For each artifact that is `ready`:
 
    a. Get instructions:
       ```bash
@@ -55,10 +73,16 @@ The PRD file is at: `docs/prds/$ARGUMENTS.md`
 
    c. Create the artifact file using the `template` from instructions as the structure.
       **Use the PRD content as the primary input** — map PRD sections to artifact sections:
-      - **proposal.md**: Problem Statement → problem, Goals → objectives, Non-Goals → scope exclusions, User Stories → user needs
-      - **specs/*.md**: User Stories → GIVEN-WHEN-THEN scenarios. Each story becomes one or more testable scenarios. Include edge cases from the story Details.
-      - **design.md**: Technical Considerations → architecture decisions, Dependencies → integration points, UI/UX Notes → component structure
-      - **tasks.md**: Derived from specs and design — atomic, implementable tasks
+      - **proposal.md**: Problem Statement → problem, Goals → objectives, Non-Goals → scope exclusions, User Stories → user needs. **If API Contract exists**: mention the API integration scope in the problem/objectives.
+      - **specs/*.md**: User Stories → GIVEN-WHEN-THEN scenarios. Each story becomes one or more testable scenarios. Include edge cases from the story Details. **If API Contract exists**: for user stories involving backend calls, add integration scenarios referencing specific endpoints, request/response shapes, and error paths (4xx/5xx from Swagger). Example:
+        ```
+        GIVEN the user submits the registration form
+        WHEN a POST request is sent to /api/v1/users with { email, password, name }
+        THEN the API returns 201 with the created user object
+        AND the user sees a success message
+        ```
+      - **design.md**: Technical Considerations → architecture decisions, Dependencies → integration points, UI/UX Notes → component structure. **If API Contract exists**: add an "API Integration" subsection with endpoint-to-story mapping, TypeScript interfaces derived from Swagger schemas, authentication approach, and error handling strategy.
+      - **tasks.md**: Derived from specs and design — atomic, implementable tasks. **If API Contract exists**: include API-specific tasks (create API client/service, implement types/interfaces, wire API calls, handle errors) referencing specific endpoints.
 
    d. Apply `context` and `rules` from instructions as constraints but do NOT copy them into the file.
 
@@ -68,45 +92,47 @@ The PRD file is at: `docs/prds/$ARGUMENTS.md`
       ```
       Continue until all `applyRequires` artifacts have `status: "done"`.
 
-8. **Show a summary** of generated artifacts with brief descriptions.
+10. **Show a summary** of generated artifacts with brief descriptions.
 
 ## Phase 3: Create GitHub Issues
 
-9. **Ask the user**: "OpenSpec artifacts are ready. Shall I create GitHub issues from the tasks now?"
+11. **Ask the user**: "OpenSpec artifacts are ready. Shall I create GitHub issues from the tasks now?"
 
-   If yes, proceed. If no, tell them they can run `/sdd-create-tickets $CHANGE_NAME` later.
+    If yes, proceed. If no, tell them they can run `/sdd-create-tickets $CHANGE_NAME` later.
 
-10. **Read all artifacts** for issue context:
+12. **Read all artifacts** for issue context:
     - `openspec/changes/$CHANGE_NAME/tasks.md` — task list
     - `openspec/changes/$CHANGE_NAME/proposal.md` — descriptions
     - `openspec/changes/$CHANGE_NAME/specs/*.md` — GIVEN-WHEN-THEN acceptance criteria
     - `openspec/changes/$CHANGE_NAME/design.md` — implementation hints
 
-11. **Verify GitHub CLI access**:
+13. **Verify GitHub CLI access**:
     ```bash
     gh repo view --json nameWithOwner -q '.nameWithOwner'
     ```
     If this fails, tell the user to run `gh auth login` and stop.
 
-12. **Parse tasks and create issues** following the same logic as `/sdd-create-tickets`:
+14. **Parse tasks and create issues** following the same logic as `/sdd-create-tickets`:
     - Each `- [ ] N.N description` line → one GitHub issue
     - Infer type from context (setup → chore, UI/feature → feat, test → test)
     - Map GIVEN-WHEN-THEN scenarios as acceptance criteria
     - Pull implementation hints from design.md
     - Create issues in dependency order via `gh issue create`
     - Ensure required labels exist first
+    - **If the task involves API integration**: include an "API Contract" section in the issue body with the specific endpoint(s), expected request/response shapes, and a pointer to the full Swagger file at `openspec/changes/$CHANGE_NAME/api-contract.yaml`
 
-13. **Update OpenSpec's tasks.md** by appending issue numbers to each task line.
+15. **Update OpenSpec's tasks.md** by appending issue numbers to each task line.
 
-14. **Write an issue mapping file** to `.tasks/$CHANGE_NAME.md`.
+16. **Write an issue mapping file** to `.tasks/$CHANGE_NAME.md`.
 
-15. **Print the final summary**:
+17. **Print the final summary**:
     ```
     ## Pipeline Complete: $ARGUMENTS
 
     PRD: docs/prds/$ARGUMENTS.md
     OpenSpec change: openspec/changes/$CHANGE_NAME/
     Artifacts: proposal.md, specs/, design.md, tasks.md
+    API Contract: openspec/changes/$CHANGE_NAME/api-contract.yaml  ← (only if applicable)
 
     | Task | Issue | Title | Type | Priority |
     |------|-------|-------|------|----------|
@@ -123,3 +149,4 @@ The PRD file is at: `docs/prds/$ARGUMENTS.md`
 - Use conventional commit types as issue title prefixes (feat, chore, test, docs).
 - Do NOT assign issues unless the user explicitly asks.
 - If any step fails (openspec CLI, gh CLI), stop and report the error clearly.
+- The Swagger/OpenAPI doc is supplementary context for HOW the backend contract looks. The PRD remains the source of truth for WHAT to build. Do not generate tasks for endpoints not referenced by any PRD user story.

@@ -109,7 +109,34 @@ The PRD template has these sections:
 | **UI/UX Notes** | Wireframes, mockups, descriptions | Design decisions |
 | **Technical Considerations** | Constraints, integrations | Implementation hints |
 | **Dependencies** | External services, APIs | Blocking issues |
+| **API Contract** | Swagger/OpenAPI file path or URL (optional) | API-enriched specs, design, and tasks |
 | **Open Questions** | Unresolved items | Flagged before spec generation |
+
+### 1b. Adding a Backend API Contract (optional)
+
+If the feature integrates with a backend API, reference the Swagger/OpenAPI spec in the PRD's **API Contract** section. You can provide either:
+
+- **A local file** — drop the Swagger file in `docs/apis/` and reference the path:
+  ```markdown
+  ## API Contract
+  docs/apis/user-auth.yaml
+  ```
+
+- **A URL** — point to a hosted Swagger endpoint:
+  ```markdown
+  ## API Contract
+  https://api.example.com/docs/openapi.yaml
+  ```
+
+When `/sdd-from-prd` runs, it will:
+1. Read or fetch the Swagger doc
+2. Copy it into the change folder as `openspec/changes/<name>/api-contract.yaml`
+3. Enrich generated specs with endpoint-specific GIVEN-WHEN-THEN scenarios
+4. Add an API Integration section to `design.md` with TypeScript interfaces and endpoint mapping
+5. Include API integration tasks in `tasks.md`
+6. Add endpoint details to each relevant GitHub issue body
+
+If the section is absent or empty, the pipeline works exactly as before — no API enrichment is applied.
 
 ### 2. Generating Specs and Tickets
 
@@ -209,7 +236,8 @@ sdd-workflow/
 |
 |-- docs/
 |   |-- prd-template.md                    # PRD template for the PO
-|   +-- prds/                              # PRD files go here
+|   |-- prds/                              # PRD files go here
+|   +-- apis/                              # Swagger/OpenAPI files (optional)
 |
 |-- openspec/
 |   |-- specs/                             # Living domain specs (grows over time)

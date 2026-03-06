@@ -40,6 +40,11 @@ As a <role>, I want to <action>, so that <benefit>.
 ## Dependencies
 <!-- External services, APIs, other features that must exist first. -->
 
+## API Contract
+<!-- Optional. Reference the backend Swagger/OpenAPI spec for this feature. -->
+<!-- Provide a local file path (e.g., docs/apis/feature-name.yaml) or a URL. -->
+<!-- Leave blank or remove this section if no API integration is needed. -->
+
 ## Open Questions
 <!-- Things not yet decided. The AI will flag these during task generation. -->
 - Question 1

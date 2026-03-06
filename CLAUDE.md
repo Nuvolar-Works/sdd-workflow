@@ -8,6 +8,7 @@ Uses OpenSpec for specifications and Claude Code skills for GitHub-driven execut
 
 ### From PRD (PO hands off a PRD file)
 1. PO writes a PRD in `docs/prds/<feature-name>.md` using the template at `docs/prd-template.md`
+   - If the feature integrates with a backend API, include the Swagger/OpenAPI file path or URL in the PRD's "API Contract" section
 2. Run `/sdd-from-prd <feature-name>` — reads PRD, generates OpenSpec specs, creates GitHub issues
 3. Run `/sdd-work <issue-number>` to pick up a ticket, create a branch, and develop it
 4. Run `/sdd-verify` to review your work and create a PR
@@ -45,6 +46,8 @@ Uses OpenSpec for specifications and Claude Code skills for GitHub-driven execut
 - OpenSpec skills: `.claude/skills/openspec-*/SKILL.md`
 - PRD template: `docs/prd-template.md`
 - PRDs: `docs/prds/<feature-name>.md`
+- API contracts (per-change): `openspec/changes/<change-name>/api-contract.yaml`
+- API source docs: `docs/apis/` (optional, for local Swagger files)
 
 ## Commands
 - `npm test` — Run tests
