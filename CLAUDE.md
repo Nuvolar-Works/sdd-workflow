@@ -14,6 +14,14 @@ Uses OpenSpec for specifications and Claude Code skills for GitHub-driven execut
 4. Run `/sdd-verify` to review your work and create a PR
 5. After all tickets are done, run `/opsx:archive` to archive the change and update living specs
 
+### From PRD (staged greenfield)
+1. PO writes a PRD in `docs/prds/<feature-name>.md` using the template at `docs/prd-template.md`
+2. Run `/sdd-staged <feature-name>` — reads PRD, proposes development stages, generates per-stage OpenSpec artifacts, creates cross-referenced GitHub issues
+3. Work through stages in order: run `/sdd-work <issue-number>` starting from stage 01
+4. Run `/sdd-verify` after each ticket to create PRs
+5. After each stage is complete, run `/opsx:archive <feature>-NN-<slug>` to archive that stage
+6. After all stages are done, archive remaining stages
+
 ### From scratch (no PRD, developer-driven)
 1. Run `/opsx:propose "feature description"` to create specs in `openspec/changes/<name>/`
 2. Review the generated proposal.md, specs/, design.md, and tasks.md
@@ -42,6 +50,7 @@ Uses OpenSpec for specifications and Claude Code skills for GitHub-driven execut
 - OpenSpec living specs: `openspec/specs/` (domain documentation, grows over time)
 - OpenSpec changes: `openspec/changes/<change-name>/` (proposal, specs, design, tasks)
 - Issue mappings: `.tasks/<change-name>.md`
+- Stage maps: `.tasks/<feature-name>-stages.md`
 - SDD skills: `.claude/skills/sdd-*/SKILL.md`
 - OpenSpec skills: `.claude/skills/openspec-*/SKILL.md`
 - PRD template: `docs/prd-template.md`

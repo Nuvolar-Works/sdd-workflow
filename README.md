@@ -28,7 +28,7 @@ claude
 
 ## Workflow Overview
 
-There are two entry points depending on who initiates the work:
+There are three entry points depending on the project context:
 
 ### Path A: PO hands off a PRD
 
@@ -68,6 +68,26 @@ A developer describes what they want to build directly to Claude.
 /opsx:archive
 ```
 
+### Path C: Staged greenfield (from PRD)
+
+For large greenfield features that benefit from incremental delivery in ordered stages (setup, scaffold, then feature work).
+
+```
+docs/prds/my-app.md              (PO writes this)
+        |
+        v
+/sdd-staged my-app                Analyzes PRD, proposes stages,
+        |                         generates per-stage OpenSpec artifacts,
+        |                         creates cross-referenced GitHub issues
+        v
+/sdd-work 42                     Work issues in stage order
+        |                         (stage 01 first, then 02, etc.)
+        v
+/sdd-verify
+        v
+/opsx:archive my-app-01-setup    Archive each completed stage
+```
+
 ## Commands Reference
 
 ### SDD Commands (custom skills)
@@ -77,6 +97,7 @@ A developer describes what they want to build directly to Claude.
 | `/sdd-from-prd <feature>` | Feature name matching a file in `docs/prds/` | Full pipeline: reads PRD, generates OpenSpec specs, creates GitHub issues. One command from PRD to tickets. |
 | `/sdd-create-tickets <change>` | OpenSpec change name | Reads OpenSpec artifacts from `openspec/changes/<change>/`, creates GitHub issues with GIVEN-WHEN-THEN acceptance criteria, updates task file with issue numbers. |
 | `/sdd-work <issue#>` | GitHub issue number | Fetches the issue, researches the codebase, presents an implementation plan for approval, creates a feature branch, implements, commits with conventional commits. |
+| `/sdd-staged <feature>` | Feature name matching a file in `docs/prds/` | Staged pipeline: reads PRD, proposes development stages, generates per-stage OpenSpec specs, creates cross-referenced GitHub issues with dependency tracking. |
 | `/sdd-verify [issue#]` | Optional issue number (auto-detected from branch) | Checks each acceptance criterion against the code, runs tests/lint/build, and if everything passes creates a PR with `Closes #<issue>`. |
 
 ### OpenSpec Commands (bundled with OpenSpec)
@@ -137,6 +158,37 @@ When `/sdd-from-prd` runs, it will:
 6. Add endpoint details to each relevant GitHub issue body
 
 If the section is absent or empty, the pipeline works exactly as before — no API enrichment is applied.
+
+### 2b. Staged Greenfield Development
+
+For large greenfield features, use `/sdd-staged` to break the PRD into ordered stages:
+
+```
+/sdd-staged my-app
+```
+
+**When to use staged vs single-stage:**
+- **Use `/sdd-from-prd`** for features with 1-2 user stories, or adding to an existing codebase
+- **Use `/sdd-staged`** for greenfield projects or large features (3+ stories) that need foundational work before feature development
+
+**Stage naming convention:** `<feature>-NN-<slug>` (e.g., `my-app-01-setup`, `my-app-02-scaffold`, `my-app-03-auth-flow`)
+
+**How it works:**
+1. Reads the PRD and proposes 3-6 stages (you can adjust before confirming)
+2. Generates a separate OpenSpec change per stage (`openspec/changes/<feature>-NN-<slug>/`)
+3. Creates GitHub issues for all stages with cross-stage dependency references
+4. Writes a master stage map to `.tasks/<feature>-stages.md`
+
+**Cross-stage dependencies:** Issues in later stages include a "Cross-Stage Dependencies" section referencing blocking issues from earlier stages. The first task of each stage gates on the prior stage completing.
+
+**Recommended frontend stage patterns:**
+| Stage | Typical content |
+|-------|----------------|
+| `01-setup` | Project init (Vite/Next/CRA), tooling, linting, CI, dependencies |
+| `02-scaffold` | App shell, routing, layout, shared components, state management skeleton |
+| `03-xx` onwards | Feature areas grouped by functional domain (auth, dashboard, settings, etc.) |
+
+**Working through stages:** Complete stage 01 issues before starting stage 02. After all issues in a stage are merged, archive it with `/opsx:archive <feature>-NN-<slug>`.
 
 ### 2. Generating Specs and Tickets
 
@@ -225,6 +277,7 @@ sdd-workflow/
 |   |   |-- archive.md
 |   |   +-- explore.md
 |   +-- skills/
+|       |-- sdd-staged/SKILL.md            # /sdd-staged     PRD -> stages -> specs -> tickets
 |       |-- sdd-from-prd/SKILL.md          # /sdd-from-prd   PRD -> specs -> tickets
 |       |-- sdd-create-tickets/SKILL.md    # /sdd-create-tickets  OpenSpec -> GitHub issues
 |       |-- sdd-work/SKILL.md              # /sdd-work        Implement a GitHub issue
@@ -367,3 +420,5 @@ Edit `.claude/hooks/validate-commit-msg.sh` to change the allowed commit types o
 | `/sdd-create-tickets` says "no tasks.md" | Run `/opsx:propose` or `/sdd-from-prd` first to generate the specs. |
 | `/sdd-work` warns about open dependencies | A blocking issue hasn't been closed yet. Close it or proceed with caution. |
 | `/sdd-verify` reports FAIL on criteria | Fix the failing criteria before the PR can be created. The agent will tell you what's missing. |
+| `/sdd-staged` suggests using `/sdd-from-prd` | Your PRD is too small for staging (1-2 stories). Use `/sdd-from-prd` or override if you still want stages. |
+| Cross-stage issues missing dependencies | Re-check `.tasks/<feature>-stages.md` for the dependency map. You can manually add "Depends on #N" to issue bodies. |
