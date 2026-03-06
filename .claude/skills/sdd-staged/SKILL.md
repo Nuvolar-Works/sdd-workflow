@@ -113,24 +113,51 @@ The PRD file is at: `docs/prds/$ARGUMENTS.md`
 
 9. **Show a summary** of all stages and their artifacts.
 
+## Phase 3.5: Design Challenge
+
+10. **Challenge the overall staged design** before creating tickets. Review the full set of stage artifacts holistically and present a brief challenge report:
+
+    ```
+    ## Design Challenge for $ARGUMENTS (Staged)
+
+    ### Assumptions
+    - <List 2-4 key assumptions the staging and design make>
+
+    ### Risks & Pitfalls
+    - <Stage ordering issues, coupling between stages, over-engineering in early stages, missing foundations>
+    - <Security concerns, performance traps, wrong abstraction level>
+
+    ### Simplification Opportunities
+    - <Can any stages be merged?>
+    - <Are we building scaffolding we don't need yet?>
+    - <Is the stage boundary in the right place?>
+
+    ### Open Questions
+    - <Anything that should be answered before implementation?>
+    ```
+
+    **Ask the user**: "Here's my design challenge across all stages. Want to adjust anything before I create tickets, or proceed as-is?"
+
+    If the user requests changes, update the relevant stage artifacts before proceeding.
+
 ## Phase 4: Create GitHub Issues (All Stages)
 
-10. **Ask the user**: "All N stages have OpenSpec artifacts. Shall I create GitHub issues for all stages now?"
+11. **Ask the user**: "All N stages have OpenSpec artifacts. Shall I create GitHub issues for all stages now?"
 
     If no, tell them they can run `/sdd-create-tickets <change-name>` per stage later.
 
-11. **Verify GitHub CLI access**:
+12. **Verify GitHub CLI access**:
     ```bash
     gh repo view --json nameWithOwner -q '.nameWithOwner'
     ```
     If this fails, tell the user to run `gh auth login` and stop.
 
-12. **Ensure per-stage labels exist**. For each stage, create a label:
+13. **Ensure per-stage labels exist**. For each stage, create a label:
     ```bash
     gh label create "stage-NN-<slug>" --description "Stage NN: <description>" --color "ededed" 2>/dev/null || true
     ```
 
-13. **Create issues stage by stage, in order**. Maintain a cross-stage mapping: `{stage-slug: {task-id: issue-number}}`.
+14. **Create issues stage by stage, in order**. Maintain a cross-stage mapping: `{stage-slug: {task-id: issue-number}}`.
 
     For each stage, read its artifacts:
     - `openspec/changes/$CHANGE_NAME/tasks.md`
@@ -191,16 +218,16 @@ The PRD file is at: `docs/prds/$ARGUMENTS.md`
 
     g. **If the task involves API integration**: include an "API Contract" section with endpoint details and pointer to the Swagger file.
 
-14. **Update each stage's tasks.md** by appending issue numbers:
+15. **Update each stage's tasks.md** by appending issue numbers:
     ```
     - [ ] 1.1 Create auth context (#42)
     ```
 
-15. **Write per-stage issue mapping files** to `.tasks/$CHANGE_NAME.md` (same format as `sdd-create-tickets`).
+16. **Write per-stage issue mapping files** to `.tasks/$CHANGE_NAME.md` (same format as `sdd-create-tickets`).
 
 ## Phase 5: Write Stage Map and Summary
 
-16. **Write the master stage map** to `.tasks/$ARGUMENTS-stages.md`:
+17. **Write the master stage map** to `.tasks/$ARGUMENTS-stages.md`:
 
     ```markdown
     # Staged Development: $ARGUMENTS
@@ -237,7 +264,7 @@ The PRD file is at: `docs/prds/$ARGUMENTS.md`
     | 1.1 | #45 | Create app shell | feat | #44 (stage 01) |
     ```
 
-17. **Print the final summary**:
+18. **Print the final summary**:
     ```
     ## Staged Pipeline Complete: $ARGUMENTS
 

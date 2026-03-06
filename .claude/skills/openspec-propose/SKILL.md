@@ -79,7 +79,30 @@ When ready to implement, run /opsx:apply
       - Use **AskUserQuestion tool** to clarify
       - Then continue with creation
 
-5. **Show final status**
+5. **Challenge the design** before declaring ready. Review the generated artifacts with a critical eye and present a brief challenge report:
+
+   ```
+   ## Design Challenge for <name>
+
+   ### Assumptions
+   - <List 2-4 key assumptions the design makes>
+
+   ### Risks & Pitfalls
+   - <Identify 2-4 things that could go wrong: over-engineering, missing edge cases, wrong abstraction level, performance traps, security concerns>
+
+   ### Simplification Opportunities
+   - <Is there a simpler approach we dismissed too quickly?>
+   - <Are we building abstractions we don't need yet?>
+
+   ### Open Questions
+   - <Anything that should be answered before implementation?>
+   ```
+
+   **Ask the user**: "Here's my design challenge. Want to adjust anything, or proceed as-is?"
+
+   If the user requests changes, update the relevant artifacts before proceeding.
+
+6. **Show final status**
    ```bash
    openspec status --change "<name>"
    ```

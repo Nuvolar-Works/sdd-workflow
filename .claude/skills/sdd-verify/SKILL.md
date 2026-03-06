@@ -49,13 +49,34 @@ You are verifying completed work and creating a PR.
    npm run build 2>&1 || true
    ```
 
-7. **Report verification results**:
+7. **Code review** — read every changed file and evaluate:
+
+   a. **Pattern consistency**: Do the changes follow existing codebase patterns (naming, file structure, component patterns, state management approach)? Flag deviations.
+
+   b. **Security**: Check for XSS vectors (dangerouslySetInnerHTML, unescaped user input), exposed secrets/keys, injection risks, improper auth checks.
+
+   c. **Performance**: Unnecessary re-renders, missing memoization on expensive computations, N+1 data fetching, large bundles imported where a lighter alternative exists.
+
+   d. **Error handling**: Are system boundaries covered (API calls, user input, external data)? Are error states handled in the UI?
+
+   e. **Design alignment** (only if a linked OpenSpec change exists): Do the changes match the architecture described in `design.md`? Flag any deviations.
+
+   For each category, mark as CLEAN or flag specific issues with file and line references.
+
+8. **Report verification results**:
    ```
    ## Verification Report for #<number>: <title>
 
    ### Acceptance Criteria
    - [x] Criterion 1 — PASS
    - [ ] Criterion 2 — FAIL: <reason>
+
+   ### Code Review
+   - Pattern consistency: CLEAN / <issues>
+   - Security: CLEAN / <issues>
+   - Performance: CLEAN / <issues>
+   - Error handling: CLEAN / <issues>
+   - Design alignment: CLEAN / N/A / <deviations>
 
    ### Project Checks
    - Tests: PASS/FAIL/NOT CONFIGURED
@@ -66,18 +87,20 @@ You are verifying completed work and creating a PR.
    <Overall assessment>
    ```
 
-8. **If any criteria FAIL or checks fail**, tell the user what needs fixing and stop. Do NOT create a PR for incomplete work.
+9. **If any criteria FAIL or checks fail**, tell the user what needs fixing and stop. Do NOT create a PR for incomplete work.
 
-9. **If everything passes**, ask the user: "All checks pass. Ready to push and create a PR?"
+10. **If code review flags issues**, present them to the user. These are recommendations, not blockers — the user decides whether to fix them or proceed. Ask: "I found some code review items. Want to address them before the PR, or proceed as-is?"
+
+11. **If everything passes** (or the user chooses to proceed), ask the user: "Ready to push and create a PR?"
 
 ## Phase 3: Create PR
 
-10. **Push the branch**:
+12. **Push the branch**:
     ```bash
     git push -u origin $(git branch --show-current)
     ```
 
-11. **Create the pull request**:
+13. **Create the pull request**:
     ```bash
     gh pr create \
       --title "<type>(<scope>): <description from issue title>" \
@@ -101,7 +124,7 @@ You are verifying completed work and creating a PR.
     )"
     ```
 
-12. **Print the PR URL** so the user can review it in the browser.
+14. **Print the PR URL** so the user can review it in the browser.
 
 ## Rules
 - Never create a PR if acceptance criteria are not met.

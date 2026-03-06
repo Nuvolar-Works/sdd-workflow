@@ -94,25 +94,50 @@ The PRD file is at: `docs/prds/$ARGUMENTS.md`
 
 10. **Show a summary** of generated artifacts with brief descriptions.
 
+## Phase 2.5: Design Challenge
+
+11. **Challenge the design** before moving to tickets. Review the generated artifacts with a critical eye and present a brief challenge report:
+
+    ```
+    ## Design Challenge for $CHANGE_NAME
+
+    ### Assumptions
+    - <List 2-4 key assumptions the design makes>
+
+    ### Risks & Pitfalls
+    - <Identify 2-4 things that could go wrong: over-engineering, missing edge cases, wrong abstraction level, performance traps, security concerns>
+
+    ### Simplification Opportunities
+    - <Is there a simpler approach we dismissed too quickly?>
+    - <Are we building abstractions we don't need yet?>
+
+    ### Open Questions
+    - <Anything that should be answered before implementation?>
+    ```
+
+    **Ask the user**: "Here's my design challenge. Want to adjust anything before I create tickets, or proceed as-is?"
+
+    If the user requests changes, update the relevant artifacts (`design.md`, `specs/*.md`, `tasks.md`) before proceeding.
+
 ## Phase 3: Create GitHub Issues
 
-11. **Ask the user**: "OpenSpec artifacts are ready. Shall I create GitHub issues from the tasks now?"
+12. **Ask the user**: "OpenSpec artifacts are ready. Shall I create GitHub issues from the tasks now?"
 
     If yes, proceed. If no, tell them they can run `/sdd-create-tickets $CHANGE_NAME` later.
 
-12. **Read all artifacts** for issue context:
+13. **Read all artifacts** for issue context:
     - `openspec/changes/$CHANGE_NAME/tasks.md` — task list
     - `openspec/changes/$CHANGE_NAME/proposal.md` — descriptions
     - `openspec/changes/$CHANGE_NAME/specs/*.md` — GIVEN-WHEN-THEN acceptance criteria
     - `openspec/changes/$CHANGE_NAME/design.md` — implementation hints
 
-13. **Verify GitHub CLI access**:
+14. **Verify GitHub CLI access**:
     ```bash
     gh repo view --json nameWithOwner -q '.nameWithOwner'
     ```
     If this fails, tell the user to run `gh auth login` and stop.
 
-14. **Parse tasks and create issues** following the same logic as `/sdd-create-tickets`:
+15. **Parse tasks and create issues** following the same logic as `/sdd-create-tickets`:
     - Each `- [ ] N.N description` line → one GitHub issue
     - Infer type from context (setup → chore, UI/feature → feat, test → test)
     - Map GIVEN-WHEN-THEN scenarios as acceptance criteria
@@ -121,11 +146,11 @@ The PRD file is at: `docs/prds/$ARGUMENTS.md`
     - Ensure required labels exist first
     - **If the task involves API integration**: include an "API Contract" section in the issue body with the specific endpoint(s), expected request/response shapes, and a pointer to the full Swagger file at `openspec/changes/$CHANGE_NAME/api-contract.yaml`
 
-15. **Update OpenSpec's tasks.md** by appending issue numbers to each task line.
+16. **Update OpenSpec's tasks.md** by appending issue numbers to each task line.
 
-16. **Write an issue mapping file** to `.tasks/$CHANGE_NAME.md`.
+17. **Write an issue mapping file** to `.tasks/$CHANGE_NAME.md`.
 
-17. **Print the final summary**:
+18. **Print the final summary**:
     ```
     ## Pipeline Complete: $ARGUMENTS
 

@@ -30,6 +30,14 @@ Uses OpenSpec for specifications and Claude Code skills for GitHub-driven execut
 5. Run `/sdd-verify` to review your work and create a PR
 6. After all tickets are done, run `/opsx:archive` to archive the change and update living specs
 
+## Review Gates
+
+The workflow has two built-in review gates that act as architect/devil's advocate without separate agents:
+
+1. **Design Challenge** (in `/sdd-from-prd`, `/sdd-staged`, `/opsx:propose`) — after generating artifacts but before creating tickets, the design is challenged: assumptions surfaced, risks identified, simplification opportunities explored. The user decides whether to adjust or proceed.
+
+2. **Code Review** (in `/sdd-verify`) — beyond acceptance criteria and CI checks, every PR goes through a code review covering: pattern consistency, security, performance, error handling, and design alignment. Issues are flagged as recommendations; the user decides whether to fix or proceed.
+
 ## Git Conventions
 - Conventional commits: `type(scope): description`
 - Types: feat, fix, docs, style, refactor, test, chore, build, ci

@@ -94,17 +94,17 @@ docs/prds/my-app.md              (PO writes this)
 
 | Command | Input | What it does |
 |---------|-------|-------------|
-| `/sdd-from-prd <feature>` | Feature name matching a file in `docs/prds/` | Full pipeline: reads PRD, generates OpenSpec specs, creates GitHub issues. One command from PRD to tickets. |
+| `/sdd-from-prd <feature>` | Feature name matching a file in `docs/prds/` | Full pipeline: reads PRD, generates OpenSpec specs, runs a design challenge, then creates GitHub issues. |
 | `/sdd-create-tickets <change>` | OpenSpec change name | Reads OpenSpec artifacts from `openspec/changes/<change>/`, creates GitHub issues with GIVEN-WHEN-THEN acceptance criteria, updates task file with issue numbers. |
 | `/sdd-work <issue#>` | GitHub issue number | Fetches the issue, auto-detects linked OpenSpec change for richer context (design, specs, stage awareness), researches the codebase, presents an implementation plan for approval, creates a feature branch, implements, commits with conventional commits, marks task complete in OpenSpec. |
-| `/sdd-staged <feature>` | Feature name matching a file in `docs/prds/` | Staged pipeline: reads PRD, proposes development stages, generates per-stage OpenSpec specs, creates cross-referenced GitHub issues with dependency tracking. |
-| `/sdd-verify [issue#]` | Optional issue number (auto-detected from branch) | Checks each acceptance criterion against the code, runs tests/lint/build, and if everything passes creates a PR with `Closes #<issue>`. |
+| `/sdd-staged <feature>` | Feature name matching a file in `docs/prds/` | Staged pipeline: reads PRD, proposes stages, generates per-stage OpenSpec specs, runs a design challenge across all stages, then creates cross-referenced GitHub issues. |
+| `/sdd-verify [issue#]` | Optional issue number (auto-detected from branch) | Checks acceptance criteria, runs tests/lint/build, performs a code review (patterns, security, performance, error handling, design alignment), then creates a PR with `Closes #<issue>`. |
 
 ### OpenSpec Commands (bundled with OpenSpec)
 
 | Command | Input | What it does |
 |---------|-------|-------------|
-| `/opsx:propose <description>` | Feature description or change name | Generates all OpenSpec artifacts: proposal.md, specs/ (GIVEN-WHEN-THEN), design.md, tasks.md. |
+| `/opsx:propose <description>` | Feature description or change name | Generates all OpenSpec artifacts: proposal.md, specs/ (GIVEN-WHEN-THEN), design.md, tasks.md. Includes a design challenge before declaring ready. |
 | `/opsx:apply [change]` | Optional change name | Implements tasks directly from OpenSpec (alternative to the GitHub issue flow). |
 | `/opsx:archive [change]` | Optional change name | Moves completed change to archive, updates living specs in `openspec/specs/`. |
 | `/opsx:explore [change]` | Optional change name | Explore and understand an existing change's artifacts. |
@@ -211,6 +211,27 @@ This runs the full pipeline:
 /sdd-create-tickets add-user-authentication
 ```
 
+### Review Gates
+
+The workflow has two built-in review gates that surface architectural, security, and quality concerns without requiring separate agents:
+
+**Design Challenge** — runs automatically in `/sdd-from-prd`, `/sdd-staged`, and `/opsx:propose` after artifacts are generated but before tickets are created. It surfaces:
+- Key assumptions the design makes
+- Risks and pitfalls (over-engineering, edge cases, security, performance)
+- Simplification opportunities
+- Open questions that should be answered first
+
+You can adjust artifacts based on the challenge or proceed as-is.
+
+**Code Review** — runs automatically in `/sdd-verify` after acceptance criteria and CI checks. It evaluates:
+- **Pattern consistency**: does the code match existing codebase conventions?
+- **Security**: XSS, injection, exposed secrets, auth gaps
+- **Performance**: unnecessary re-renders, missing memoization, N+1 fetches
+- **Error handling**: system boundaries covered, error states in UI
+- **Design alignment**: matches `design.md` if an OpenSpec change is linked
+
+Code review issues are recommendations, not blockers — you decide whether to fix them or proceed to PR.
+
 ### 3. Developing a Ticket
 
 ```
@@ -244,8 +265,10 @@ The agent will:
 3. Review all changes against the base branch
 4. Check each criterion: **PASS** or **FAIL**
 5. Run tests/lint/build
-6. If anything fails: stop and report what needs fixing
-7. If everything passes: ask for confirmation, push, and create a PR
+6. **Code review**: evaluate pattern consistency, security, performance, error handling, and design alignment
+7. If acceptance criteria or CI fail: stop and report what needs fixing
+8. If code review flags issues: present them as recommendations (you decide whether to fix or proceed)
+9. If everything passes: ask for confirmation, push, and create a PR
 
 The PR includes:
 - Summary of changes
