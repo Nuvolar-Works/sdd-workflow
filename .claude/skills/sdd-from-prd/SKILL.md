@@ -41,11 +41,26 @@ The PRD file is at: `docs/prds/$ARGUMENTS.md`
      - Shared data models / schemas referenced by multiple endpoints
    - Hold this **API Summary** in context alongside the PRD content. This summary — not the raw Swagger file — is what gets fed into artifact generation.
 
+## Phase 1.5: Read Project Constitution
+
+5. **Check for a project constitution** at `docs/constitution.md`.
+   - If it exists, read it and hold it in context. The constitution defines:
+     - **Core Principles**: Coding standards and architectural rules (NON-NEGOTIABLE and RECOMMENDED)
+     - **Technology Stack**: Framework, language, styling, state management, etc.
+     - **Folder Structure**: Where files should be placed
+     - **Quality Gates**: What must pass before work is done
+   - These constraints MUST be applied when generating all artifacts:
+     - **proposal.md**: Reference the constitution's tech stack in the technical approach
+     - **specs/*.md**: Scenarios must respect constitution patterns (e.g., if constitution says "no custom CSS", specs should not reference custom stylesheets)
+     - **design.md**: Architecture MUST align with constitution's folder structure, component patterns, state management approach, and technology choices
+     - **tasks.md**: Tasks must follow constitution conventions (e.g., if constitution mandates Zod for validation, tasks should reference Zod, not yup or manual validation)
+   - If the constitution does not exist, proceed without it — but note in the summary: "No project constitution found. Run `/sdd-constitution` to define coding standards."
+
 ## Phase 2: Generate OpenSpec Artifacts
 
-5. **Derive a change name** from the feature name in kebab-case (e.g., `user-auth` stays `user-auth`, `User Authentication` becomes `user-authentication`).
+6. **Derive a change name** from the feature name in kebab-case (e.g., `user-auth` stays `user-auth`, `User Authentication` becomes `user-authentication`).
 
-6. **Create the OpenSpec change**:
+7. **Create the OpenSpec change**:
    ```bash
    openspec new change "$CHANGE_NAME"
    ```

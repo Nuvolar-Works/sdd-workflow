@@ -47,7 +47,15 @@ When ready to implement, run /opsx:apply
    - `applyRequires`: array of artifact IDs needed before implementation (e.g., `["tasks"]`)
    - `artifacts`: list of all artifacts with their status and dependencies
 
-4. **Create artifacts in sequence until apply-ready**
+4. **Check for a project constitution** at `docs/constitution.md`.
+   - If it exists, read it and hold it in context. The constitution defines core principles, technology stack, folder structure, and quality gates.
+   - These constraints MUST be applied when generating all artifacts:
+     - **proposal.md**: Reference the constitution's tech stack in the technical approach
+     - **design.md**: Architecture MUST align with constitution's folder structure, component patterns, state management approach, and technology choices
+     - **tasks.md**: Tasks must follow constitution conventions (correct libraries, naming, file locations)
+   - If the constitution does not exist, proceed without it.
+
+5. **Create artifacts in sequence until apply-ready**
 
    Use the **TodoWrite tool** to track progress through the artifacts.
 

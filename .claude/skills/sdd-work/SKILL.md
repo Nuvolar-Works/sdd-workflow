@@ -50,9 +50,19 @@ The issue number is: $ARGUMENTS
    - Identify what prior stages produced (components, services, types, routes) so you can reuse them
    - If cross-stage dependencies reference issues that are still open, warn the user
 
+## Phase 1.7: Read Project Constitution
+
+7. **Check for a project constitution** at `docs/constitution.md`.
+   - If it exists, read it and hold it in context. During implementation:
+     - Follow the constitution's **Core Principles** (NON-NEGOTIABLE rules are mandatory, RECOMMENDED rules should be followed unless there's a justified reason)
+     - Use the correct libraries and patterns from the **Technology Stack** (e.g., if the constitution says "Zod for validation", don't use yup)
+     - Place files according to the **Folder Structure**
+     - Ensure the **Quality Gates** pass before considering work done
+   - If the constitution does not exist, proceed without it.
+
 ## Phase 2: Research the Codebase
 
-7. **Explore the project structure** to understand existing patterns:
+8. **Explore the project structure** to understand existing patterns:
    - Use Glob to find relevant files by name and extension
    - Use Grep to search for related code, imports, or patterns
    - Read key files that will be affected by this change

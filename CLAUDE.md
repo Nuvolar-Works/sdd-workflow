@@ -4,6 +4,12 @@
 Spec-Driven Development workflow for a 2-person frontend team.
 Uses OpenSpec for specifications and Claude Code skills for GitHub-driven execution.
 
+## Project Setup (one-time)
+1. Run `/sdd-constitution` to define the project's coding standards, tech stack, and quality gates
+   - This creates `docs/constitution.md` — the single source of truth for project conventions
+   - All SDD and OpenSpec skills automatically read this file and enforce its rules
+   - To update standards later, run `/sdd-constitution` again
+
 ## Workflow
 
 ### From PRD (PO hands off a PRD file)
@@ -65,6 +71,7 @@ The workflow has two built-in review gates that act as architect/devil's advocat
 - PRD template: `docs/prd-template.md`
 - PRDs: `docs/prds/<feature-name>.md`
 - API contracts (per-change): `openspec/changes/<change-name>/api-contract.yaml`
+- Project constitution: `docs/constitution.md` (coding standards, tech stack, quality gates)
 - API source docs: `docs/apis/` (optional, for local Swagger files)
 
 ## Commands

@@ -49,7 +49,9 @@ You are verifying completed work and creating a PR.
    npm run build 2>&1 || true
    ```
 
-7. **Code review** — read every changed file and evaluate:
+7. **Read the project constitution** at `docs/constitution.md` (if it exists). Hold its principles in context for the code review step — every NON-NEGOTIABLE principle is a required check, every RECOMMENDED principle is an advisory check.
+
+8. **Code review** — read every changed file and evaluate:
 
    a. **Pattern consistency**: Do the changes follow existing codebase patterns (naming, file structure, component patterns, state management approach)? Flag deviations.
 
@@ -60,6 +62,8 @@ You are verifying completed work and creating a PR.
    d. **Error handling**: Are system boundaries covered (API calls, user input, external data)? Are error states handled in the UI?
 
    e. **Design alignment** (only if a linked OpenSpec change exists): Do the changes match the architecture described in `design.md`? Flag any deviations.
+
+   f. **Constitution compliance** (only if `docs/constitution.md` exists): Check each NON-NEGOTIABLE principle against the changed code. Flag violations. Check RECOMMENDED principles and note deviations as advisories.
 
    For each category, mark as CLEAN or flag specific issues with file and line references.
 
@@ -77,6 +81,7 @@ You are verifying completed work and creating a PR.
    - Performance: CLEAN / <issues>
    - Error handling: CLEAN / <issues>
    - Design alignment: CLEAN / N/A / <deviations>
+   - Constitution compliance: CLEAN / N/A / <violations>
 
    ### Project Checks
    - Tests: PASS/FAIL/NOT CONFIGURED

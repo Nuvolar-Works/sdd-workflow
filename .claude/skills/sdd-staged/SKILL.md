@@ -39,9 +39,25 @@ The PRD file is at: `docs/prds/$ARGUMENTS.md`
 
 5. **Assess if staging is appropriate**. If the PRD has only 1-2 user stories, suggest using `/sdd-from-prd $ARGUMENTS` instead — staging adds overhead without benefit for small features. If the user still wants staged, proceed.
 
+## Phase 1.5: Read Project Constitution
+
+6. **Check for a project constitution** at `docs/constitution.md`.
+   - If it exists, read it and hold it in context. The constitution defines:
+     - **Core Principles**: Coding standards and architectural rules (NON-NEGOTIABLE and RECOMMENDED)
+     - **Technology Stack**: Framework, language, styling, state management, etc.
+     - **Folder Structure**: Where files should be placed
+     - **Quality Gates**: What must pass before work is done
+   - These constraints MUST be applied when generating all per-stage artifacts:
+     - **proposal.md**: Reference the constitution's tech stack in the technical approach
+     - **specs/*.md**: Scenarios must respect constitution patterns
+     - **design.md**: Architecture MUST align with constitution's folder structure, component patterns, state management approach, and technology choices
+     - **tasks.md**: Tasks must follow constitution conventions (e.g., correct libraries, naming patterns, file locations)
+   - For **stage 01 (setup)**: Use the constitution's Technology Stack and Quality Gates to drive the project initialization tasks (correct framework, linting config, folder structure, etc.)
+   - If the constitution does not exist, proceed without it — but note in the summary: "No project constitution found. Run `/sdd-constitution` to define coding standards."
+
 ## Phase 2: Analyze and Propose Stages
 
-6. **Analyze the PRD holistically** and propose a staged breakdown. Target **3-6 stages**.
+7. **Analyze the PRD holistically** and propose a staged breakdown. Target **3-6 stages**.
 
    Use this algorithm:
    a. **Greenfield defaults**: For a new project, propose:

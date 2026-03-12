@@ -24,7 +24,37 @@ npx @fission-ai/openspec@latest init
 
 # Start Claude Code
 claude
+
+# Define your project's coding standards (one-time setup)
+/sdd-constitution
 ```
+
+## Project Setup
+
+Before starting any workflow, define your project's coding standards by running:
+
+```
+/sdd-constitution
+```
+
+This creates `docs/constitution.md` — a single document that captures your tech stack, coding principles, folder structure, and quality gates. The skill will:
+
+1. **Detect** existing project signals (package.json, tsconfig, linting configs, folder structure)
+2. **Interview** you in batches for stack choices, conventions, and quality rules
+3. **Generate** a constitution with numbered principles (marked NON-NEGOTIABLE or RECOMMENDED)
+4. **Present** it for your review and approval before writing
+
+Once ratified, the constitution is automatically enforced by all SDD and OpenSpec skills:
+
+| Skill | How it uses the constitution |
+|-------|------------------------------|
+| `/sdd-from-prd` | Generates specs, design, and tasks aligned with your stack and patterns |
+| `/sdd-staged` | Same as above + drives stage-01 setup tasks from the constitution's tech stack |
+| `/opsx:propose` | Applies stack and convention constraints to all generated artifacts |
+| `/sdd-work` | Follows principles during implementation (correct libraries, file locations, patterns) |
+| `/sdd-verify` | Adds "Constitution compliance" as a code review category — NON-NEGOTIABLE violations block, RECOMMENDED deviations are advisory |
+
+To update the constitution later, run `/sdd-constitution` again. Changes are tracked via a Sync Impact Report and semantic versioning in the document header.
 
 ## Workflow Overview
 
@@ -94,11 +124,12 @@ docs/prds/my-app.md              (PO writes this)
 
 | Command | Input | What it does |
 |---------|-------|-------------|
-| `/sdd-from-prd <feature>` | Feature name matching a file in `docs/prds/` | Full pipeline: reads PRD, generates OpenSpec specs, runs a design challenge, then creates GitHub issues. |
+| `/sdd-constitution [name]` | Optional project name | Interactive setup: detects codebase signals, interviews for stack/conventions/quality gates, generates `docs/constitution.md`. All other skills read this file automatically. |
+| `/sdd-from-prd <feature>` | Feature name matching a file in `docs/prds/` | Full pipeline: reads PRD and constitution, generates OpenSpec specs, runs a design challenge, then creates GitHub issues. |
 | `/sdd-create-tickets <change>` | OpenSpec change name | Reads OpenSpec artifacts from `openspec/changes/<change>/`, creates GitHub issues with GIVEN-WHEN-THEN acceptance criteria, updates task file with issue numbers. |
-| `/sdd-work <issue#>` | GitHub issue number | Fetches the issue, auto-detects linked OpenSpec change for richer context (design, specs, stage awareness), researches the codebase, presents an implementation plan for approval, creates a feature branch, implements, commits with conventional commits, marks task complete in OpenSpec. |
-| `/sdd-staged <feature>` | Feature name matching a file in `docs/prds/` | Staged pipeline: reads PRD, proposes stages, generates per-stage OpenSpec specs, runs a design challenge across all stages, then creates cross-referenced GitHub issues. |
-| `/sdd-verify [issue#]` | Optional issue number (auto-detected from branch) | Checks acceptance criteria, runs tests/lint/build, performs a code review (patterns, security, performance, error handling, design alignment), then creates a PR with `Closes #<issue>`. |
+| `/sdd-work <issue#>` | GitHub issue number | Fetches the issue, reads constitution and linked OpenSpec change for context (design, specs, stage awareness), researches the codebase, presents an implementation plan for approval, creates a feature branch, implements following constitution principles, commits with conventional commits, marks task complete in OpenSpec. |
+| `/sdd-staged <feature>` | Feature name matching a file in `docs/prds/` | Staged pipeline: reads PRD and constitution, proposes stages, generates per-stage OpenSpec specs, runs a design challenge across all stages, then creates cross-referenced GitHub issues. |
+| `/sdd-verify [issue#]` | Optional issue number (auto-detected from branch) | Checks acceptance criteria, runs tests/lint/build, performs a code review (patterns, security, performance, error handling, design alignment, constitution compliance), then creates a PR with `Closes #<issue>`. |
 
 ### OpenSpec Commands (bundled with OpenSpec)
 
@@ -229,8 +260,9 @@ You can adjust artifacts based on the challenge or proceed as-is.
 - **Performance**: unnecessary re-renders, missing memoization, N+1 fetches
 - **Error handling**: system boundaries covered, error states in UI
 - **Design alignment**: matches `design.md` if an OpenSpec change is linked
+- **Constitution compliance**: checks NON-NEGOTIABLE principles (violations block) and RECOMMENDED principles (deviations are advisory)
 
-Code review issues are recommendations, not blockers — you decide whether to fix them or proceed to PR.
+Code review issues are recommendations, not blockers — you decide whether to fix them or proceed to PR. Exception: NON-NEGOTIABLE constitution violations are flagged as required fixes.
 
 ### 3. Developing a Ticket
 
@@ -302,6 +334,7 @@ sdd-workflow/
 |   |   |-- archive.md
 |   |   +-- explore.md
 |   +-- skills/
+|       |-- sdd-constitution/SKILL.md      # /sdd-constitution  Define project coding standards
 |       |-- sdd-staged/SKILL.md            # /sdd-staged     PRD -> stages -> specs -> tickets
 |       |-- sdd-from-prd/SKILL.md          # /sdd-from-prd   PRD -> specs -> tickets
 |       |-- sdd-create-tickets/SKILL.md    # /sdd-create-tickets  OpenSpec -> GitHub issues
@@ -313,6 +346,7 @@ sdd-workflow/
 |       +-- openspec-explore/SKILL.md      # OpenSpec: explore change artifacts
 |
 |-- docs/
+|   |-- constitution.md                    # Project coding standards (generated by /sdd-constitution)
 |   |-- prd-template.md                    # PRD template for the PO
 |   |-- prds/                              # PRD files go here
 |   +-- apis/                              # Swagger/OpenAPI files (optional)
@@ -413,11 +447,12 @@ A **PreToolUse hook** automatically blocks commits that don't follow this format
 
 ### Adapting for your project
 
-The `CLAUDE.md` file is the AI's project context. Update these sections when you set up your actual project:
+1. **Run `/sdd-constitution`** to define your tech stack, coding standards, and quality gates. This is the primary way to configure project-specific conventions — the constitution is automatically enforced by all skills.
 
-- **Commands**: Replace `npm test`, `npm run lint`, `npm run build` with your actual commands
-- **Code Conventions**: Add framework-specific patterns (React, Angular, Vue, etc.)
-- **File Locations**: Adjust if your project structure differs
+2. **Update `CLAUDE.md`** for workflow-level settings:
+   - **Commands**: Replace `npm test`, `npm run lint`, `npm run build` with your actual commands
+   - **File Locations**: Adjust if your project structure differs
+   - **Git Conventions**: Already configured, adjust if needed
 
 ### Adding new skills
 
