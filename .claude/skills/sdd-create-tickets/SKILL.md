@@ -33,35 +33,41 @@ The change name is: $ARGUMENTS
    ```
    If this fails, tell the user to run `gh auth login` and ensure a GitHub remote is configured.
 
-4. **Parse tasks into a structured list**. For each task line (`- [ ] N.N description`):
+4. **Group tasks by section**. Parse `tasks.md` and group subtasks under their parent section header (`## N. Section Name`). Each section becomes one GitHub issue; its subtasks become a checklist inside.
 
-   - **Title**: Use the task description
-   - **Type**: Infer from context:
-     - Section names containing "setup", "config", "infrastructure" → `chore`
-     - Section names containing "test" → `test`
-     - Section names containing "docs", "documentation" → `docs`
-     - Tasks mentioning "refactor" → `refactor`
+   For each section, determine:
+   - **Title**: The section name (e.g. "Database Layer")
+   - **Type**: Infer from the section name:
+     - Contains "setup", "config", "infrastructure" → `chore`
+     - Contains "test" → `test`
+     - Contains "docs", "documentation" → `docs`
+     - Contains "refactor" → `refactor`
      - Everything else → `feat`
    - **Priority**: Based on section order (first sections = `high`, middle = `medium`, last = `low`)
    - **Labels**: Derive from the section name (kebab-case, e.g., "Database Layer" → `database-layer`) plus the type
-   - **Dependencies**: Tasks within the same section depend on prior tasks in that section. Later sections depend on earlier sections completing.
-   - **Acceptance criteria**: Match GIVEN-WHEN-THEN scenarios from specs that relate to this task's area. If no direct match, derive criteria from the task description.
-   - **Implementation hints**: Pull relevant details from `design.md`
+   - **Dependencies**: Later sections depend on earlier sections completing (reference their issue numbers).
+   - **Acceptance criteria**: Match GIVEN-WHEN-THEN scenarios from specs that relate to this section's area. If no direct match, derive criteria from the section's tasks.
+   - **Implementation hints**: Pull relevant details from `design.md` for this section's scope.
 
 5. **Ensure required labels exist**. For each unique label, create if missing:
    ```bash
    gh label create "<label>" --description "" --color "ededed" 2>/dev/null || true
    ```
 
-6. **Create issues in dependency order** (tasks with no dependencies first). For each task:
+6. **Create one issue per section**, in order (first section first). For each section:
 
    ```bash
    gh issue create \
-     --title "<type>: <task title>" \
+     --title "<type>: <section title>" \
      --label "<labels>" \
      --body "$(cat <<'ISSUE_EOF'
    ## Description
-   <Context from proposal.md + task description>
+   <Context from proposal.md scoped to this section>
+
+   ## Tasks
+   - [ ] N.1 <subtask description>
+   - [ ] N.2 <subtask description>
+   ...
 
    ## Acceptance Criteria
    <GIVEN-WHEN-THEN scenarios from specs, or derived criteria>
@@ -69,10 +75,10 @@ The change name is: $ARGUMENTS
    - [ ] <criterion>
 
    ## Implementation Hints
-   <Relevant details from design.md>
+   <Relevant details from design.md for this section>
 
    ## Dependencies
-   <List dependency issue numbers, or "None">
+   <List dependency issue numbers from prior sections, or "None">
 
    ---
    Source: openspec/changes/$ARGUMENTS/tasks.md
@@ -80,11 +86,13 @@ The change name is: $ARGUMENTS
    )"
    ```
 
-7. **After creating each issue**, note the returned issue number. For later tasks that reference earlier ones, use the actual GitHub issue numbers in the Dependencies section.
+7. **After creating each issue**, note the returned issue number. Use it in the Dependencies section of subsequent section issues.
 
-8. **Update OpenSpec's tasks.md** by appending the issue number to each task line:
+8. **Update OpenSpec's tasks.md** by appending the section's issue number to each section header line:
    ```
-   - [ ] 1.1 Create auth context (#42)
+   ## 1. Setup (#42)
+   - [ ] 1.1 Create auth context
+   - [ ] 1.2 Configure middleware
    ```
 
 9. **Write an issue mapping file** to `.tasks/$ARGUMENTS.md` for tracking:
@@ -94,19 +102,20 @@ The change name is: $ARGUMENTS
    Source: openspec/changes/$ARGUMENTS/
    Generated: <YYYY-MM-DD>
 
-   | Task | Issue | Title | Type | Priority | Depends On |
-   |------|-------|-------|------|----------|------------|
-   | 1.1  | #42   | ...   | feat | high     | none       |
-   | 1.2  | #43   | ...   | feat | high     | #42        |
+   | Section | Issue | Title | Type | Priority | Depends On |
+   |---------|-------|-------|------|----------|------------|
+   | 1       | #42   | ...   | feat | high     | none       |
+   | 2       | #43   | ...   | feat | medium   | #42        |
    ```
 
 10. **Print a summary** showing the table above and the total number of issues created.
 
 ## Rules
-- Create issues in dependency order so you can reference real issue numbers.
-- Use the inferred type as prefix in the issue title (e.g. "feat: Create auth context").
+- Create one issue per section (not per subtask). Subtasks live as a checklist inside the issue body.
+- Create issues in section order so you can reference real issue numbers in dependencies.
+- Use the inferred type as prefix in the issue title (e.g. "feat: Database Layer").
 - Do NOT assign issues to anyone unless the user explicitly asks.
 - If any issue creation fails, stop and report the error. Do not continue with remaining issues.
-- Always update OpenSpec's tasks.md with issue numbers after creation.
+- Always update OpenSpec's tasks.md with issue numbers on the section header lines after creation.
 - If the change has no tasks.md or tasks.md is empty, tell the user and stop.
 - Respect the OpenSpec format — do not modify proposal.md, specs/, or design.md.
