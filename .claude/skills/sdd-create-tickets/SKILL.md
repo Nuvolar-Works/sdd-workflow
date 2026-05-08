@@ -1,121 +1,84 @@
 ---
 name: sdd-create-tickets
-description: Create GitHub issues from an OpenSpec change's task breakdown. Use after /opsx:propose to push tasks to GitHub as trackable issues.
-argument-hint: "<change-name>"
+description: Create tickets in the configured tracker from an OpenSpec change's task breakdown. Standalone alternative to running the full /sdd-from-prd pipeline.
+argument-hint: "<change-name> [--dry-run]"
 disable-model-invocation: true
 ---
 
-# Create GitHub Issues from OpenSpec Change
+# Create Tickets from an OpenSpec Change
 
-You are creating GitHub issues from an OpenSpec change's artifacts.
+You are creating tracker tickets from an OpenSpec change's artifacts. The active tracker (GitHub or Jira) is selected via `sdd/config.json`.
 
 ## Input
 
-The change name is: $ARGUMENTS
+`$ARGUMENTS` parsed as: `<change-name> [--dry-run]`
 
-## Steps
+- Required: `<change-name>`.
+- Optional: `--dry-run`. When present, set `DRY_RUN=true`. All write operations in this skill emit `[DRY RUN] would <op>(<args>)` lines and use synthetic `DRY-N` ids; no real tickets are created.
 
-1. **Locate the change directory** at `openspec/changes/$ARGUMENTS/`. If it does not exist, tell the user to run `/opsx:propose` first and stop.
+## Phase 0: Tracker Setup
 
-2. **Read all OpenSpec artifacts** for context:
+1. Read `sdd/config.json`. Capture `tracker`. If the file is missing, run `/sdd-setup` first.
+2. Read `sdd/trackers/protocol.md` for abstract operations and the dry-run convention.
+3. Read `sdd/trackers/<tracker>.md` for concrete recipes.
+4. Run `VerifyAuth()`. Stop on failure.
 
-   a. Read `openspec/changes/$ARGUMENTS/tasks.md` — this is the task list you will create issues from. Each task is a `- [ ] N.N description` line under section headers (`## N. Section`).
+## Phase 0.5: Re-run Safety
 
-   b. Read `openspec/changes/$ARGUMENTS/proposal.md` — extract the problem statement and scope. Use this for issue descriptions.
+5. Locate the change directory at `openspec/changes/$ARGUMENTS/`. If it does not exist, tell the user to run `/opsx:propose` first and stop.
 
-   c. Read all spec files from `openspec/changes/$ARGUMENTS/specs/` (use Glob for `openspec/changes/$ARGUMENTS/specs/*.md`). Extract GIVEN-WHEN-THEN scenarios. These become acceptance criteria on the issues.
+6. Detect existing tickets:
+   - Read `openspec/changes/$ARGUMENTS/tasks.md`. Scan section headers for ticket-id annotations (`(#42)` or `[TT-457]`).
+   - Read `sdd/tasks/$ARGUMENTS.md` if present. Capture rows.
+   - For each captured id, run `FetchTicket(id)` to confirm it still exists and capture its current state.
 
-   d. Read `openspec/changes/$ARGUMENTS/design.md` — extract the technical approach. Use this for implementation hints on issues.
+7. If any existing tickets are detected, present:
 
-3. **Verify GitHub CLI access** by running:
-   ```bash
-   gh repo view --json nameWithOwner -q '.nameWithOwner'
    ```
-   If this fails, tell the user to run `gh auth login` and ensure a GitHub remote is configured.
+   ## Existing State Detected
+   OpenSpec change: openspec/changes/$ARGUMENTS/
+   Mapping: sdd/tasks/$ARGUMENTS.md (<count> tickets)
 
-4. **Group tasks by section**. Parse `tasks.md` and group subtasks under their parent section header (`## N. Section Name`). Each section becomes one GitHub issue; its subtasks become a checklist inside.
-
-   For each section, determine:
-   - **Title**: The section name (e.g. "Database Layer")
-   - **Type**: Infer from the section name:
-     - Contains "setup", "config", "infrastructure" → `chore`
-     - Contains "test" → `test`
-     - Contains "docs", "documentation" → `docs`
-     - Contains "refactor" → `refactor`
-     - Everything else → `feat`
-   - **Priority**: Based on section order (first sections = `high`, middle = `medium`, last = `low`)
-   - **Labels**: Derive from the section name (kebab-case, e.g., "Database Layer" → `database-layer`) plus the type
-   - **Dependencies**: Later sections depend on earlier sections completing (reference their issue numbers).
-   - **Acceptance criteria**: Match GIVEN-WHEN-THEN scenarios from specs that relate to this section's area. If no direct match, derive criteria from the section's tasks.
-   - **Implementation hints**: Pull relevant details from `design.md` for this section's scope.
-
-5. **Ensure required labels exist**. For each unique label, create if missing:
-   ```bash
-   gh label create "<label>" --description "" --color "ededed" 2>/dev/null || true
+   Tracker state:
+   - <id>: <status>, <comment count> comments
    ```
 
-6. **Create one issue per section**, in order (first section first). For each section:
+   Ask: "Continue (skip existing, create only what's missing) / Regenerate (overwrite — show diff first) / Abort?" Default Continue.
 
-   ```bash
-   gh issue create \
-     --title "<type>: <section title>" \
-     --label "<labels>" \
-     --body "$(cat <<'ISSUE_EOF'
-   ## Description
-   <Context from proposal.md scoped to this section>
+   - **Continue**: pass through the captured ids to Phase 1; the protocol's re-run hook skips create for sections that already have ids.
+   - **Regenerate**: per-ticket diff between existing state and what the new payload would create; require explicit `yes` per ticket before deletion + recreation. Old ids in the mapping are marked `replaced by <new id>`.
+   - **Abort**: stop.
 
-   ## Tasks
-   - [ ] N.1 <subtask description>
-   - [ ] N.2 <subtask description>
-   ...
+   When `DRY_RUN`: still run the detection. The Continue / Regenerate / Abort prompt still fires, but the skill never actually destroys or recreates — it prints what would happen.
 
-   ## Acceptance Criteria
-   <GIVEN-WHEN-THEN scenarios from specs, or derived criteria>
-   - [ ] <criterion>
-   - [ ] <criterion>
+8. If no existing tickets exist, proceed to Phase 1 normally.
 
-   ## Implementation Hints
-   <Relevant details from design.md for this section>
+## Phase 1: Create Tickets
 
-   ## Dependencies
-   <List dependency issue numbers from prior sections, or "None">
+9. Read `sdd/templates/ticket-creation-protocol.md`. Follow it to:
+   - Read change artifacts (proposal, specs, design, optional api-contract).
+   - Group by section.
+   - Derive payloads (title, type, priority, labels, AC, hints, dependencies).
+   - Ensure labels exist.
+   - Create tickets in section order, capturing ids for downstream Dependencies.
+   - Annotate `tasks.md` section headers.
+   - Write the mapping file.
+   - Print the summary.
 
-   ---
-   Source: openspec/changes/$ARGUMENTS/tasks.md
-   ISSUE_EOF
-   )"
-   ```
+   Inputs to the protocol:
+   - `change_name = $ARGUMENTS`
+   - `change_dir = openspec/changes/$ARGUMENTS/`
+   - `parent_id = none` (these are top-level tickets, not sub-tasks)
+   - `is_subtask = false`
+   - `dry_run = DRY_RUN`
 
-7. **After creating each issue**, note the returned issue number. Use it in the Dependencies section of subsequent section issues.
-
-8. **Update OpenSpec's tasks.md** by appending the section's issue number to each section header line:
-   ```
-   ## 1. Setup (#42)
-   - [ ] 1.1 Create auth context
-   - [ ] 1.2 Configure middleware
-   ```
-
-9. **Write an issue mapping file** to `.tasks/$ARGUMENTS.md` for tracking:
-   ```markdown
-   # Issue Mapping: <change-name>
-
-   Source: openspec/changes/$ARGUMENTS/
-   Generated: <YYYY-MM-DD>
-
-   | Section | Issue | Title | Type | Priority | Depends On |
-   |---------|-------|-------|------|----------|------------|
-   | 1       | #42   | ...   | feat | high     | none       |
-   | 2       | #43   | ...   | feat | medium   | #42        |
-   ```
-
-10. **Print a summary** showing the table above and the total number of issues created.
+10. The protocol handles both real and dry-run paths via the convention in `sdd/trackers/protocol.md`. Don't duplicate the algorithm in this skill.
 
 ## Rules
-- Create one issue per section (not per subtask). Subtasks live as a checklist inside the issue body.
-- Create issues in section order so you can reference real issue numbers in dependencies.
-- Use the inferred type as prefix in the issue title (e.g. "feat: Database Layer").
-- Do NOT assign issues to anyone unless the user explicitly asks.
-- If any issue creation fails, stop and report the error. Do not continue with remaining issues.
-- Always update OpenSpec's tasks.md with issue numbers on the section header lines after creation.
-- If the change has no tasks.md or tasks.md is empty, tell the user and stop.
-- Respect the OpenSpec format — do not modify proposal.md, specs/, or design.md.
+
+- One ticket per section, not per subtask.
+- Create in section order so dependency ids resolve correctly.
+- Use abstract operation names from `sdd/trackers/protocol.md`; never embed `gh` or MCP calls inline.
+- If any creation fails mid-batch, stop and report. Capture which sections succeeded so the user can re-run with **Continue** to finish the rest.
+- If the change has no `tasks.md` or it's empty, tell the user and stop.
+- Respect the OpenSpec format — never modify `proposal.md`, `specs/`, or `design.md` from this skill (only `tasks.md` for the section-header annotations).

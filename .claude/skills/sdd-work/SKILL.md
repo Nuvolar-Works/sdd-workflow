@@ -1,152 +1,271 @@
 ---
 name: sdd-work
-description: Pick up a GitHub issue by number, research the codebase, create a branch, and implement it end-to-end
-argument-hint: "<issue-number>"
+description: Pick up a ticket end-to-end. Self-detects branch state — runs Fresh (full plan + implement), Resume (continue in-flight work), or Fix-from-PR (address review feedback) automatically based on the current branch. Works with any tracker (GitHub or Jira) configured via sdd/config.json.
+argument-hint: "<ticket-id> [--dry-run]"
 disable-model-invocation: true
 ---
 
-# Work on a GitHub Issue
+# Work on a Ticket
 
-You are implementing a GitHub issue end-to-end.
+You are implementing a tracker ticket end-to-end. The skill self-detects which mode to run in based on the current git branch.
 
 ## Input
 
-The issue number is: $ARGUMENTS
+`$ARGUMENTS` parsed as: `<ticket-id> [--dry-run]`
+
+- Required: `<ticket-id>` (e.g. `42` for GitHub or `TT-456` for Jira).
+- Optional: `--dry-run`. When present, set `DRY_RUN=true`. Tracker writes are mocked; **code edits do not happen** — the skill stops after presenting the plan.
+
+## Phase 0: Tracker Setup
+
+1. Read `sdd/config.json`. Capture `tracker` and `vcs`.
+2. Read `sdd/trackers/protocol.md` for abstract operations and the dry-run convention.
+3. Read `sdd/trackers/<tracker>.md` for ticket operations.
+4. If `vcs` differs from `tracker`, also read `sdd/trackers/<vcs>.md`.
+
+## Phase 0.5: Branch State Detection (mode selection)
+
+This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode. No prompt at the start — the mode falls out of the branch state.
+
+5. Inspect the current branch:
+   ```bash
+   git branch --show-current
+   git log <base>..HEAD --oneline    # base from sdd/config.json (default: develop)
+   ```
+
+6. If on the base branch (`develop` or `main`) → **Fresh** mode. Continue at Phase 1.
+
+7. Otherwise the branch has commits. Check for an existing PR:
+   ```bash
+   gh pr view --json state,reviewDecision,reviewThreads,comments  ← GitHub
+   ```
+   For projects on Jira-only tracking with `vcs: "github"`, the PR check uses `gh` regardless of tracker (PRs live in GitHub).
+
+8. **Mode selection**:
+
+   | State | Mode | Behavior |
+   |-------|------|----------|
+   | No PR yet, branch has commits | **Resume** | Skip Phase 2 (codebase research) and the plan-confirmation prompt. Re-state acceptance criteria status from existing commits. Continue at Phase 1 with light context. |
+   | PR open, no review feedback | **Resume** | Same as above. |
+   | PR open with `reviewDecision = CHANGES_REQUESTED` or `comments` containing review threads needing reply | **Fix-from-PR** | Fetch review threads via `gh pr view --json reviewThreads`. Sync them to the ticket as a Clarification comment (opt-in via Phase 3.5 prompts later). Skip Phase 2's codebase research; present a focused fix plan. |
+   | PR open and merged | tell the user the work is done; suggest running `/sdd-status` to archive the change. Stop. |
+
+   Announce the detected mode:
+   ```
+   Mode: Fresh / Resume / Fix-from-PR
+   Branch: <branch>, <N> commits ahead of <base>
+   <details specific to the mode>
+   ```
+
+9. **In Resume and Fix-from-PR modes**, remember the existing branch and skip the `CreateBranch` step in Phase 3. Continue using the current branch for further commits.
 
 ## Phase 1: Understand the Ticket
 
-1. **Fetch the issue** details:
-   ```bash
-   gh issue view $ARGUMENTS --json title,body,labels,assignees,state
-   ```
+10. Run `FetchTicket($ARGUMENTS)` and `AssignTicket($ARGUMENTS, "@me")` from the active tracker recipe. Hold the ticket payload (title, body, labels, status, parent) in context.
 
-2. **Read the full issue body** carefully. Identify:
-   - What needs to be built
-   - The acceptance criteria (these are your definition of done)
-   - Any dependencies (check if blocking issues are closed)
-   - Implementation hints
+11. Read the body. Identify what to build, AC, dependencies, implementation hints. If dependencies are open, warn the user and ask whether to proceed.
 
-3. **Check for blocking dependencies**. If the issue body references dependencies that are still open, warn the user and ask whether to proceed anyway.
+12. Detect a linked OpenSpec change via the `Source:` footer:
+    ```
+    Source: openspec/changes/<CHANGE_NAME>/tasks.md
+    ```
+    If found, extract `<CHANGE_NAME>`. If not, skip Phase 1.5.
 
-4. **Detect linked OpenSpec change**. Look for a `Source:` line at the bottom of the issue body:
-   ```
-   Source: openspec/changes/<CHANGE_NAME>/tasks.md
-   ```
-   - If found, extract `<CHANGE_NAME>` and announce: "Linked OpenSpec change detected: `<CHANGE_NAME>`"
-   - If not found, skip to Phase 2 — this issue was created manually and the rest of the workflow works as before.
+13. Optionally call `UpdateTicketStatus($ARGUMENTS, "in_progress")` (Jira: real transition; GitHub: no-op). When `DRY_RUN`, print the intended call.
 
-## Phase 1.5: Read OpenSpec Context (only if a linked change was detected)
+## Phase 1.5: OpenSpec Context (lazy, only if linked)
 
-5. **Read the OpenSpec artifacts** for richer implementation context:
-   - `openspec/changes/<CHANGE_NAME>/proposal.md` — overall goals and context
-   - `openspec/changes/<CHANGE_NAME>/design.md` — architecture, patterns, API integration
-   - `openspec/changes/<CHANGE_NAME>/specs/*.md` — GIVEN-WHEN-THEN acceptance scenarios
+14. Open `openspec/changes/<CHANGE_NAME>/tasks.md`. Find the section header containing the ticket id. Note the section title.
 
-   These supplement the issue body. The issue body defines the scope for THIS task; the artifacts provide cross-task design rationale.
+15. **Locate the relevant spec file**, in order of preference:
+    a. Read the `Spec section:` footer in the ticket body — tickets created by `/sdd-tasks-from-story` carry an explicit pointer.
+    b. Heuristic fallback when no footer: glob `specs/*.md`, grep each for keywords from the section title, read the strongest match.
 
-6. **Check for stage context**. If the issue body contains a `## Stage Context` section:
-   - Extract the feature name and stage number
-   - Read `.tasks/<feature>-stages.md` for the full stage map
-   - Identify what prior stages produced (components, services, types, routes) so you can reuse them
-   - If cross-stage dependencies reference issues that are still open, warn the user
+16. Extract only the relevant section of `design.md` via grep. Do NOT read the whole file.
 
-## Phase 1.7: Read Project Constitution
+17. Read `proposal.md` (it's short).
 
-7. **Check for a project constitution** at `docs/constitution.md`.
-   - If it exists, read it and hold it in context. During implementation:
-     - Follow the constitution's **Core Principles** (NON-NEGOTIABLE rules are mandatory, RECOMMENDED rules should be followed unless there's a justified reason)
-     - Use the correct libraries and patterns from the **Technology Stack** (e.g., if the constitution says "Zod for validation", don't use yup)
-     - Place files according to the **Folder Structure**
-     - Ensure the **Quality Gates** pass before considering work done
-   - If the constitution does not exist, proceed without it.
+18. Stage context: if the body has `## Stage Context`, read `sdd/tasks/<feature>-stages.md` for the full stage map and identify what prior stages produced.
 
-## Phase 2: Research the Codebase
+## Phase 1.6: Read Ticket Comments (sub-task + parent)
 
-8. **Explore the project structure** to understand existing patterns:
-   - Use Glob to find relevant files by name and extension
-   - Use Grep to search for related code, imports, or patterns
-   - Read key files that will be affected by this change
+19. Run `FetchComments($ARGUMENTS)`.
 
-8. **Identify**:
-   - Which existing files need to be modified
-   - Which new files need to be created
-   - What existing patterns to follow (component structure, naming, imports)
-   - What tests exist that might need updating
+20. If the ticket has a `parent` (Jira sub-task) or a `Parent: #N` body line (GitHub emulated), also run `FetchComments(<parent-id>)`.
 
-9. **Present your implementation plan** to the user:
-   ```
-   ## Implementation Plan for #<number>: <title>
+21. Filter substantive comments using the heuristic in `sdd/templates/story-comment-triage.md` § Step 2 (bot/automation, ≤10-word with no link/code/number, pure emoji are dropped).
 
-   ### Files to modify:
-   - path/to/file.ts — <what changes>
+22. Surface a digest:
+    ```
+    Comments on this ticket: <count> (<substantive count> substantive)
+    Comments on parent <parent-id>: <count> (<substantive count> substantive)
 
-   ### Files to create:
-   - path/to/new-file.ts — <purpose>
+    Substantive highlights:
+    - [parent | <author>, <date>] <one-line summary>
+    - [ticket | <author>, <date>] <one-line summary>
+    ```
 
-   ### Approach:
-   <Brief description of implementation approach>
+23. In **Fix-from-PR mode**: the digest also includes the PR review threads as `[review | <reviewer>] <thread summary>`. These are the primary inputs to the focused fix plan in Phase 2.
 
-   ### OpenSpec Context (if linked change was detected):
-   - Change: <change-name>
-   - Design approach: <key points from design.md>
-   - Related specs: <spec files with key scenarios relevant to this task>
-   - Prior stages: <what earlier stages built that this task can reuse>
+24. Comments factor into the plan in Phase 2. **On conflict between body and a comment, the comment wins** unless clearly superseded later.
 
-   ### Risks or open questions:
-   <Any concerns>
-   ```
+## Phase 1.7: Constitution Sections (lazy)
 
-   **Ask the user: "Does this plan look good? Should I proceed?"**
-   Do NOT write any code until the user confirms.
+25. Read these only:
+    - `sdd/constitution/principles.md`
+    - `sdd/constitution/folder-structure.md`
+    - `sdd/constitution/quality-gates.md`
+
+    Legacy fallback: `docs/constitution.md`. Skip if neither exists.
+
+## Phase 2: Plan
+
+26. **Fresh mode**: research the codebase via Glob / Grep / targeted reads. Identify files to modify, files to create, patterns to follow, tests that may need updating. Present the implementation plan:
+
+    ```
+    ## Implementation Plan for <ticket-id>: <title>
+
+    ### Files to modify:
+    - path — <change>
+
+    ### Files to create:
+    - path — <purpose>
+
+    ### Approach:
+    <brief description>
+
+    ### OpenSpec Context (if linked):
+    - Change: <change-name>
+    - Spec: <file>
+    - Design: <key points from the relevant section>
+    - Prior stages: <reusable outputs>
+
+    ### Risks or open questions:
+    <concerns>
+    ```
+
+    Ask: "Does this plan look good? Should I proceed?" Don't write code until the user confirms.
+
+27. **Resume mode**: skip the codebase research. Walk through each AC and report PASS / PARTIAL / NOT STARTED based on commit history (`git log <base>..HEAD`) and a brief diff scan. Present:
+
+    ```
+    ## Resume Status for <ticket-id>: <title>
+
+    Commits so far:
+    - <hash> <subject>
+    - <hash> <subject>
+
+    Acceptance Criteria status:
+    - [x] <criterion> — covered by <hash>
+    - [ ] <criterion> — not yet
+    - [ ] <criterion> — partial: <what's left>
+
+    Suggested next:
+    <concrete next-step suggestion>
+    ```
+
+    Ask: "Continue with the suggested next step?" or "Stop and let me decide?"
+
+28. **Fix-from-PR mode**: build a fix plan from the PR review threads. For each thread:
+    - The reviewer's concern (verbatim).
+    - The change required.
+    - The file:line if specified.
+
+    Present:
+
+    ```
+    ## Fix Plan for <ticket-id>: <title>
+
+    Review threads to address:
+    1. <reviewer> on <file>:<line> — <concern>
+       Proposed fix: <description>
+    2. ...
+
+    Other commits planned: <if any extra fixes Claude noticed>
+    ```
+
+    Ask: "Does this fix plan look right? Should I proceed?"
 
 ## Phase 3: Implement
 
-10. **Create a feature branch** from the current branch:
-   ```bash
-   git checkout -b <type>/$ARGUMENTS-<short-description>
-   ```
-   Use the issue's label to determine the type (feat, fix, chore, etc.).
-   Derive a kebab-case short description from the issue title.
+29. **Fresh mode only**: create a feature branch via `CreateBranch(<branch-name>, <base>)`. Branch name: `<type>/<ticket-id-slug>-<short-description>` per the conventions in CLAUDE.md.
 
-11. **Implement the changes** following the plan:
-    - Make code changes following existing codebase patterns
-    - Add or update tests if acceptance criteria require it
-    - Keep changes focused on what the ticket asks for — no scope creep
+    **Resume / Fix-from-PR**: stay on the current branch. Skip branch creation.
 
-12. **Run project checks** if configured:
+    When `DRY_RUN`: print `[DRY RUN] would CreateBranch(...)` and stop the entire skill — code edits don't happen in dry-run mode.
+
+30. Implement the changes following the plan. Follow existing patterns. Add or update tests if AC requires. Keep changes focused.
+
+31. Run project checks if configured:
     ```bash
     npm test 2>&1 || true
     npm run lint 2>&1 || true
     npm run build 2>&1 || true
     ```
-    Fix any issues these surface.
+    Fix issues these surface. If tests still fail after fix attempts, ask the user: "Tests still failing — keep iterating, save progress and stop, or skip?"
 
-13. **Stage and commit** using conventional commits:
+## Phase 3.5: Record Discoveries
+
+32. Read `sdd/templates/work-discovery-comments.md` for detection logic, prompt flow, drafting rules, and follow-up ticket creation. The template covers:
+    - Detection signals (divergence, blocker, surprise, confirmation, future-work-placeholder).
+    - Per-moment prompt (`yes / edit / skip`).
+    - Drafting via `sdd/templates/ticket-comment-shapes.md`.
+    - For Blockers / Follow-ups: second prompt for `CreateRelatedTicket` linked to the parent story (or current ticket if no parent).
+    - State tracking (decisions / blockers / follow-ups / clarifications) for the Phase 4.5 closing summary.
+
+    When `DRY_RUN`: prompts still fire; on `yes` or `edit`, the draft is shown but `[DRY RUN] would CommentOnTicket(...)` replaces the actual post.
+
+## Phase 4: Commit and Verify
+
+33. Stage and commit using conventional commits:
     ```bash
     git add <specific-files>
-    git commit -m "<type>(<scope>): <description> (#$ARGUMENTS)"
+    git commit -m "<type>(<scope>): <description> <ticket-ref>"
     ```
-    - The type comes from the issue labels (feat, fix, chore, etc.)
-    - The scope is the area of the codebase affected
-    - Always include the issue reference `(#N)` at the end
-    - Make commits granular — one logical change per commit, not one giant commit
+    - `<type>` from ticket labels.
+    - `<scope>` is the area touched.
+    - `<ticket-ref>`: `(#42)` for GitHub, `[TT-456]` for Jira.
+    - Granular commits — one logical change per commit.
 
-14. **After implementation**, go through each acceptance criterion and verify it is met. Report the status of each one to the user.
+34. After implementation, walk through each AC and verify it is met. Report PASS / FAIL per criterion.
 
-15. **Mark task complete in OpenSpec** (only if a linked change was detected). Find the matching task line in `openspec/changes/<CHANGE_NAME>/tasks.md` (match by issue number `#$ARGUMENTS` or task description) and change `- [ ]` to `- [x]`. This keeps OpenSpec status in sync.
+35. **Do NOT update `openspec/changes/<CHANGE_NAME>/tasks.md` checkbox state.** This is intentional. `tasks.md` is now a **derived view**, regenerated by `/sdd-status` from authoritative ticket statuses. Per-developer writes during work caused merge conflicts when multiple developers worked on the same change. The single source of truth for "is this sub-task done?" is the ticket's status.
 
-## Phase 4: Hand Off
+## Phase 4.5: Closing Summary
 
-16. **Tell the user** the implementation is complete and suggest:
+36. Read `sdd/templates/ticket-comment-shapes.md` for the **Closing summary** shape.
+
+37. Draft the summary using the work_state from Phase 3.5:
+    - **Built**: 1-3 lines from the implementation plan.
+    - **Key decisions**: bullets, or `None`.
+    - **Deviations from spec**: bullets, or `None`.
+    - **Follow-ups created**: bullets with new ticket ids, or `None`.
+    - **PR**: `<pending /sdd-verify>`.
+
+38. Show the draft. Ask: "Post this summary to the ticket before handing off to /sdd-verify? (yes / edit / skip)"
+
+39. On `yes` / `edit`, run `CommentOnTicket($ARGUMENTS, <body>)`. When `DRY_RUN`, print `[DRY RUN] would CommentOnTicket(...)`.
+
+## Phase 5: Hand Off
+
+40. Tell the user:
     ```
     Implementation complete! Run /sdd-verify to review the changes and create a PR.
     ```
 
+    In **Fix-from-PR mode**, the PR already exists. Adjust the message:
+    ```
+    Fix commits pushed locally. Run /sdd-verify to re-run checks and update the PR.
+    ```
+
 ## Rules
-- ALWAYS ask the user to confirm the plan before writing any code.
-- Make commits granular. One logical change per commit.
-- Follow the conventional commit format strictly.
-- Reference the issue number in every commit message.
-- Do NOT push the branch. That happens during `/sdd-verify`.
+
+- ALWAYS confirm the plan with the user before writing code (Fresh and Fix-from-PR modes; Resume mode confirms the next step).
+- Granular commits, conventional format, ticket reference in every commit message.
+- Do NOT push the branch — that's `/sdd-verify`'s job.
+- Do not add features beyond what the ticket asks for.
+- Use abstract operation names from `sdd/trackers/protocol.md`; never embed `gh` or MCP calls inline.
+- Read constitution and OpenSpec artifacts **lazily** — load only sections relevant to this specific ticket.
+- The skill **never** updates `openspec/changes/<change>/tasks.md` checkbox state. That's `/sdd-status`'s job (concurrency-safe via single-writer regeneration from ticket statuses).
+- `--dry-run` halts the skill after Phase 2 (the plan). Code edits, branch creation, and commits don't happen in dry-run mode. Tracker writes are mocked.
 - If you encounter something unexpected, stop and ask the user rather than guessing.
-- Do not add features or changes beyond what the ticket asks for.

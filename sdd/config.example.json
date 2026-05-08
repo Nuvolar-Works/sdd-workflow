@@ -1,0 +1,28 @@
+{
+  "tracker": "github",
+  "vcs": "github",
+  "github": {
+    "remote": "origin",
+    "default_base_branch": "develop"
+  },
+  "jira": {
+    "site": "your-org.atlassian.net",
+    "project_key": "PROJ",
+    "issue_type_map": {
+      "feat": "Story",
+      "fix": "Bug",
+      "chore": "Task",
+      "test": "Task",
+      "docs": "Task",
+      "refactor": "Task"
+    },
+    "subtask_type": "Sub-task",
+    "status_workflow": {
+      "in_progress": "In Progress",
+      "in_review": "In Review",
+      "done": "Done"
+    },
+    "source_field": null
+  },
+  "mcps_enabled": []
+}

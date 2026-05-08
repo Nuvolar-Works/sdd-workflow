@@ -1,312 +1,182 @@
 ---
 name: sdd-staged
-description: Staged greenfield development from a PRD. Analyzes a PRD, proposes development stages, generates OpenSpec artifacts per stage, and creates cross-referenced GitHub issues with dependency tracking.
-argument-hint: "<feature-name>"
+description: Staged greenfield development from a PRD. Proposes stages, generates per-stage OpenSpec artifacts, and creates cross-referenced tickets in the configured tracker (GitHub or Jira).
+argument-hint: "<feature-slug> [--dry-run]"
 disable-model-invocation: true
 ---
 
-# Staged Greenfield: PRD → Stages → OpenSpec → GitHub Issues
+# Staged Greenfield: PRD → Stages → OpenSpec → Tickets
 
-You are running the staged greenfield pipeline: read a PRD, propose development stages, generate per-stage OpenSpec artifacts, and create cross-referenced GitHub issues.
+You are running the staged greenfield pipeline: read a PRD, propose development stages, generate per-stage OpenSpec artifacts, and create cross-referenced tickets in whichever tracker the project is configured for.
 
 ## Input
 
-The feature name is: $ARGUMENTS
-The PRD file is at: `docs/prds/$ARGUMENTS.md`
+`$ARGUMENTS` parsed as: `<feature-slug> [--dry-run]`
+
+- Required: `<feature-slug>` (e.g. `my-app`).
+- Optional: `--dry-run`. When present, set `DRY_RUN=true`. Stage artifacts still generate locally; tracker writes are mocked with synthetic `DRY-N` ids.
+
+PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/prds/<feature-slug>.md`).
+
+## Phase 0: Tracker Setup
+
+1. Read `sdd/config.json`. Capture `tracker` and `vcs`. If missing, run `/sdd-setup` first.
+2. Read `sdd/trackers/protocol.md` for abstract operations and the dry-run convention.
+3. Read `sdd/trackers/<tracker>.md` for ticket operations.
+4. If `vcs` differs, also read `sdd/trackers/<vcs>.md`.
+5. Run `VerifyAuth()`. Stop on failure.
+
+## Phase 0.5: Re-run Safety
+
+6. Detect existing staged state:
+   - List `openspec/changes/<feature-slug>-*` directories. Capture stage slugs.
+   - Read `sdd/tasks/<feature-slug>-stages.md` if present.
+   - Read `sdd/tasks/<feature-slug>-NN-<slug>.md` per-stage mappings if present. Capture ticket ids.
+   - For each captured id, run `FetchTicket(id)` to confirm and capture state.
+
+7. If existing state is detected, present:
+
+   ```
+   ## Existing Staged State Detected
+   Stage map: sdd/tasks/<feature-slug>-stages.md
+   Stages found: <list>
+   Tickets per stage: <counts>
+   ```
+
+   Ask: "Continue (resume staged work, only fill gaps) / Regenerate (per-file diffs) / Abort?" Default Continue.
+
+   - **Continue**: skip stage proposal (use existing `<feature-slug>-stages.md`); skip artifact generation per-file where files exist; the protocol's re-run hook skips ticket creation for sections with existing ids.
+   - **Regenerate**: re-propose stages (warn that this can shift stage boundaries); per-artifact diff before overwrite; per-ticket diff before recreate.
+   - **Abort**: stop.
+
+   When `DRY_RUN`: detection still runs; the prompt still fires; no destructive ops execute.
+
+8. If no existing state, proceed normally.
 
 ## Phase 1: Read and Validate the PRD
 
-1. **Read the PRD** at `docs/prds/$ARGUMENTS.md`. If the file does not exist, tell the user and stop.
+9. Read the PRD. Try `sdd/prds/<feature-slug>-v1.md`, then `sdd/prds/<feature-slug>.md`, then legacy `docs/prds/<feature-slug>.md`. If none, stop.
+10. Check `## Open Questions`. Surface unresolved ones; ask whether to proceed.
+11. Extract: Problem, Goals & Non-Goals, User Stories, UI/UX, Technical Considerations, Dependencies.
+12. Check `## API Contract`. If present:
+    - Local file: read it. URL: WebFetch. On failure, ask whether to proceed without.
+    - Parse and hold an **API Summary** in context (title, version, base URL, auth, relevant endpoints, schemas).
+13. Assess if staging is appropriate. With only 1-2 user stories, suggest `/sdd-from-prd <feature-slug>`. If user wants staging, continue.
 
-2. **Check for Open Questions** in the PRD. If any exist, present them to the user and ask whether to proceed or resolve them first.
+## Phase 1.5: Read Constitution Sections
 
-3. **Extract the key PRD content** and hold it in context:
-   - Problem Statement
-   - Goals and Non-Goals
-   - User Stories (these drive stage and task generation)
-   - UI/UX Notes
-   - Technical Considerations
-   - Dependencies
+14. Read these section files only:
+    - `sdd/constitution/tech-stack.md`
+    - `sdd/constitution/folder-structure.md`
+    - `sdd/constitution/quality-gates.md` (drives stage-01 setup tasks)
 
-4. **Check for an API Contract reference** in the PRD:
-   - Look for an `## API Contract` section.
-   - If missing or empty, skip — the pipeline works without it.
-   - If present, extract the reference (file path or URL).
-     - **Local file**: Read it. If not found, warn and ask whether to proceed without it.
-     - **URL**: Fetch with WebFetch. If fetch fails, warn and ask whether to proceed without it.
-   - **Parse the Swagger/OpenAPI content** and extract an API Summary (title, version, base URL, auth, endpoints, schemas).
-   - Hold the **API Summary** in context alongside the PRD content.
-
-5. **Assess if staging is appropriate**. If the PRD has only 1-2 user stories, suggest using `/sdd-from-prd $ARGUMENTS` instead — staging adds overhead without benefit for small features. If the user still wants staged, proceed.
-
-## Phase 1.5: Read Project Constitution
-
-6. **Check for a project constitution** at `docs/constitution.md`.
-   - If it exists, read it and hold it in context. The constitution defines:
-     - **Core Principles**: Coding standards and architectural rules (NON-NEGOTIABLE and RECOMMENDED)
-     - **Technology Stack**: Framework, language, styling, state management, etc.
-     - **Folder Structure**: Where files should be placed
-     - **Quality Gates**: What must pass before work is done
-   - These constraints MUST be applied when generating all per-stage artifacts:
-     - **proposal.md**: Reference the constitution's tech stack in the technical approach
-     - **specs/*.md**: Scenarios must respect constitution patterns
-     - **design.md**: Architecture MUST align with constitution's folder structure, component patterns, state management approach, and technology choices
-     - **tasks.md**: Tasks must follow constitution conventions (e.g., correct libraries, naming patterns, file locations)
-   - For **stage 01 (setup)**: Use the constitution's Technology Stack and Quality Gates to drive the project initialization tasks (correct framework, linting config, folder structure, etc.)
-   - If the constitution does not exist, proceed without it — but note in the summary: "No project constitution found. Run `/sdd-constitution` to define coding standards."
+    Legacy fallback: `docs/constitution.md`. Skip if neither exists.
 
 ## Phase 2: Analyze and Propose Stages
 
-7. **Analyze the PRD holistically** and propose a staged breakdown. Target **3-6 stages**.
+15. **Continue mode**: skip this phase. Use the existing `<feature-slug>-stages.md` to drive Phase 3.
 
-   Use this algorithm:
-   a. **Greenfield defaults**: For a new project, propose:
-      - `01-setup` — Project initialization, tooling, CI, dependencies, dev environment
-      - `02-scaffold` — App shell, routing, layout components, state management skeleton, shared utilities
-   b. **Group user stories** by functional area or dependency chain. Stories that share UI components, data models, or API endpoints cluster together.
-   c. **Order by dependency**: Features that others depend on come first. If story B requires a component from story A, story A's stage comes first.
-   d. **API contract consideration**: If present, stages that set up API clients/types come before stages that consume them.
+    **Otherwise**: propose 3-6 stages. Algorithm:
+    - Greenfield defaults: `01-setup` (init, tooling, CI), `02-scaffold` (app shell, routing, layout, shared utilities).
+    - Group user stories by functional area or dependency chain.
+    - Order by dependency: features others depend on come first.
+    - If API Contract exists, stages that set up clients/types come before stages that consume them.
 
-7. **Present the proposed stages** to the user:
-
-   ```
-   ## Proposed Stages for $ARGUMENTS
-
-   | # | Stage | Description | User Stories |
-   |---|-------|-------------|-------------|
-   | 01 | setup | Project init, tooling, CI | — |
-   | 02 | scaffold | Routing, layout, shared components | Story 1 |
-   | 03 | auth-flow | Authentication UI and API integration | Story 2, Story 3 |
-   | 04 | dashboard | Main dashboard views | Story 4, Story 5 |
-
-   You can: add, remove, reorder, rename stages, or reassign stories between them.
-   Approve to proceed with artifact generation.
-   ```
-
-   Wait for user approval. Allow adjustments. If a stage ends up with zero user stories (like setup/scaffold), that is fine — those are infrastructure stages.
+16. Present proposed stages as a table. Allow add / remove / reorder / rename / reassign-stories. Wait for explicit approval. Stages with zero user stories (setup/scaffold) are fine.
 
 ## Phase 3: Generate OpenSpec Artifacts Per Stage
 
-8. **For each approved stage**, in order, generate OpenSpec artifacts:
+17. For each approved stage in order:
 
-   a. **Derive the change name**: `$ARGUMENTS-NN-<stage-slug>` (e.g., `my-app-01-setup`, `my-app-02-scaffold`).
+    a. `CHANGE_NAME = <feature-slug>-NN-<stage-slug>` (zero-padded).
 
-   b. **Create the OpenSpec change**:
-      ```bash
-      openspec new change "$CHANGE_NAME"
-      ```
-      If a change with that name already exists, ask the user whether to continue it or skip it.
+    b. Re-run gate: if Phase 0.5 mode is **Continue** and the change directory already exists, skip `openspec new change`. Otherwise:
+       ```bash
+       openspec new change "$CHANGE_NAME"
+       ```
 
-   c. **If this is the first API-consuming stage and an API Contract was found**, copy the Swagger file into this change folder:
-      - Local file: Copy to `openspec/changes/$CHANGE_NAME/api-contract.yaml`
-      - URL content: Write to `openspec/changes/$CHANGE_NAME/api-contract.yaml`
+    c. If this is the first API-consuming stage and an API Contract exists, copy the Swagger source to `openspec/changes/$CHANGE_NAME/api-contract.yaml`.
 
-   d. **Get the artifact build order**:
-      ```bash
-      openspec status --change "$CHANGE_NAME" --json
-      ```
+    d. Get artifact build order: `openspec status --change "$CHANGE_NAME" --json`.
 
-   e. **Generate each artifact in dependency order**. For each artifact that is `ready`:
-      - Get instructions:
-        ```bash
-        openspec instructions <artifact-id> --change "$CHANGE_NAME" --json
-        ```
-      - Read any completed dependency artifacts for context.
-      - Create the artifact file using the `template` from instructions as the structure.
-      - **Scope to this stage only**: Use only the PRD content relevant to this stage's user stories.
-      - **Prior stage context**: For stages after 01, include a context block summarizing what earlier stages produce (components, services, types, routes, utilities). This prevents re-creating things and enables referencing them.
-      - **API enrichment** (same as `/sdd-from-prd`):
-        - **specs/*.md**: Add integration scenarios for API-consuming stories.
-        - **design.md**: Add "API Integration" subsection with endpoint mapping, TypeScript interfaces, auth approach.
-        - **tasks.md**: Include API-specific tasks (client, types, wiring, error handling).
-      - Apply `context` and `rules` from instructions as constraints — do NOT copy them into the file.
-      - After each artifact, re-check status:
-        ```bash
-        openspec status --change "$CHANGE_NAME" --json
-        ```
+    e. Generate each `ready` artifact in dependency order. Per-artifact:
+       - Get instructions: `openspec instructions <artifact-id> --change "$CHANGE_NAME" --json`.
+       - Read completed deps for context.
+       - **Re-run gate**: in Continue mode, skip if file exists. In Regenerate mode, show diff and require explicit `yes`.
+       - Create using the `template` from instructions. Scope strictly to this stage. For stages > 01, include a context block summarizing what earlier stages produce.
+       - For specs, reference `sdd/templates/given-when-then-examples.md`.
+       - For API-consuming tasks, mirror the enrichment from `/sdd-from-prd`.
+       - Apply `context` and `rules` as constraints; don't copy them in.
+       - Re-check status after each artifact.
 
-   f. **Show progress** after each stage: "Stage NN-slug: artifacts generated."
+    f. Show per-stage progress: `Stage NN-slug: artifacts <generated|skipped|regenerated>.`
 
-9. **Show a summary** of all stages and their artifacts.
+18. Show summary of all stages and their artifacts.
 
 ## Phase 3.5: Design Challenge
 
-10. **Challenge the overall staged design** before creating tickets. Review the full set of stage artifacts holistically and present a brief challenge report:
+19. Read `sdd/templates/design-challenge.md`. Produce a challenge across the **full set** of stage artifacts (stage ordering, coupling, over-engineering, missing foundations). Apply requested changes.
 
-    ```
-    ## Design Challenge for $ARGUMENTS (Staged)
+## Phase 4: Create Tickets (All Stages)
 
-    ### Assumptions
-    - <List 2-4 key assumptions the staging and design make>
+20. Ask: "All N stages have OpenSpec artifacts. Shall I create tickets in `<tracker>` for all stages now?" If declined, point at `/sdd-create-tickets <change-name>` per stage.
 
-    ### Risks & Pitfalls
-    - <Stage ordering issues, coupling between stages, over-engineering in early stages, missing foundations>
-    - <Security concerns, performance traps, wrong abstraction level>
+21. Read `sdd/templates/ticket-creation-protocol.md`. For each stage in order, follow the protocol with:
+    - `change_name = <feature-slug>-NN-<stage-slug>`
+    - `change_dir = openspec/changes/<change_name>/`
+    - `parent_id = none` (top-level tickets)
+    - `is_subtask = false`
+    - `dry_run = DRY_RUN`
+    - **Stage label**: include `stage-NN-<slug>` in every payload's labels (the protocol's label step calls `EnsureLabel("stage-NN-<slug>")` automatically when it sees a new label).
+    - **Cross-stage dependencies**: the **first ticket of each stage after 01** depends on the **last ticket of the previous stage** (stage gate). Add specific cross-references when a section's hints mention a prior-stage output.
+    - **Stage Context** (added to each ticket body before the protocol's footer): "This ticket is part of **Stage NN-<slug>** of the `<feature-slug>` staged development. See `sdd/tasks/<feature-slug>-stages.md` for the full stage map."
 
-    ### Simplification Opportunities
-    - <Can any stages be merged?>
-    - <Are we building scaffolding we don't need yet?>
-    - <Is the stage boundary in the right place?>
-
-    ### Open Questions
-    - <Anything that should be answered before implementation?>
-    ```
-
-    **Ask the user**: "Here's my design challenge across all stages. Want to adjust anything before I create tickets, or proceed as-is?"
-
-    If the user requests changes, update the relevant stage artifacts before proceeding.
-
-## Phase 4: Create GitHub Issues (All Stages)
-
-11. **Ask the user**: "All N stages have OpenSpec artifacts. Shall I create GitHub issues for all stages now?"
-
-    If no, tell them they can run `/sdd-create-tickets <change-name>` per stage later.
-
-12. **Verify GitHub CLI access**:
-    ```bash
-    gh repo view --json nameWithOwner -q '.nameWithOwner'
-    ```
-    If this fails, tell the user to run `gh auth login` and stop.
-
-13. **Ensure per-stage labels exist**. For each stage, create a label:
-    ```bash
-    gh label create "stage-NN-<slug>" --description "Stage NN: <description>" --color "ededed" 2>/dev/null || true
-    ```
-
-14. **Create issues stage by stage, in order**. Maintain a cross-stage mapping: `{stage-slug: {task-id: issue-number}}`.
-
-    For each stage, read its artifacts:
-    - `openspec/changes/$CHANGE_NAME/tasks.md`
-    - `openspec/changes/$CHANGE_NAME/proposal.md`
-    - `openspec/changes/$CHANGE_NAME/specs/*.md`
-    - `openspec/changes/$CHANGE_NAME/design.md`
-
-    For each task (`- [ ] N.N description`):
-
-    a. **Infer type** (same as `sdd-create-tickets`):
-       - setup/config/infrastructure → `chore`
-       - test → `test`
-       - docs/documentation → `docs`
-       - refactor → `refactor`
-       - Everything else → `feat`
-
-    b. **Map acceptance criteria** from GIVEN-WHEN-THEN scenarios in specs.
-
-    c. **Pull implementation hints** from design.md.
-
-    d. **Determine cross-stage dependencies**:
-       - The **first task of each stage after 01** automatically depends on the **last task of the previous stage** (stage gate).
-       - If a task explicitly references outputs from a prior stage (e.g., "uses the auth service from stage 01"), add a specific "Depends on #N" reference.
-
-    e. **Create the issue**:
-       ```bash
-       gh issue create \
-         --title "<type>: <task title>" \
-         --label "<type>,stage-NN-<slug>" \
-         --body "$(cat <<'ISSUE_EOF'
-       ## Description
-       <Context from proposal.md + task description>
-
-       ## Acceptance Criteria
-       <GIVEN-WHEN-THEN scenarios or derived criteria>
-       - [ ] <criterion>
-
-       ## Implementation Hints
-       <Relevant details from design.md>
-
-       ## Dependencies
-       <Intra-stage dependency issue numbers, or "None">
-
-       ## Cross-Stage Dependencies
-       <"Depends on #N (stage NN-slug: task title)" or "None — this is stage 01">
-
-       ## Stage Context
-       This issue is part of **Stage NN-<slug>** of the `$ARGUMENTS` staged development.
-       See full stage map: `.tasks/$ARGUMENTS-stages.md`
-
-       ---
-       Source: openspec/changes/$CHANGE_NAME/tasks.md
-       ISSUE_EOF
-       )"
-       ```
-
-    f. **Record the issue number** in the cross-stage mapping.
-
-    g. **If the task involves API integration**: include an "API Contract" section with endpoint details and pointer to the Swagger file.
-
-15. **Update each stage's tasks.md** by appending issue numbers:
-    ```
-    - [ ] 1.1 Create auth context (#42)
-    ```
-
-16. **Write per-stage issue mapping files** to `.tasks/$CHANGE_NAME.md` (same format as `sdd-create-tickets`).
-
-## Phase 5: Write Stage Map and Summary
-
-17. **Write the master stage map** to `.tasks/$ARGUMENTS-stages.md`:
+22. After all stages complete, write the master stage map to `sdd/tasks/<feature-slug>-stages.md`:
 
     ```markdown
-    # Staged Development: $ARGUMENTS
+    # Staged Development: <feature-slug>
 
-    Source PRD: docs/prds/$ARGUMENTS.md
+    Source PRD: <prd path used>
     Generated: <YYYY-MM-DD>
+    Tracker: <tracker>
     Total Stages: N
-    Total Issues: M
+    Total Tickets: M
 
     ## Stages
 
-    | Stage | Change | Issues | Status |
-    |-------|--------|--------|--------|
-    | 01-setup | $ARGUMENTS-01-setup | #42-#44 | pending |
-    | 02-scaffold | $ARGUMENTS-02-scaffold | #45-#48 | pending |
+    | Stage | Change | Tickets | Status |
+    |-------|--------|---------|--------|
+    | 01-setup | <feature>-01-setup | <range or list> | pending |
+    | 02-scaffold | <feature>-02-scaffold | <range> | pending |
 
     ## Stage Details
 
     ### 01-setup
-    - Change: openspec/changes/$ARGUMENTS-01-setup/
+    - Change: openspec/changes/<feature>-01-setup/
     - Depends on: (none)
 
-    | Task | Issue | Title | Type | Depends On |
-    |------|-------|-------|------|------------|
-    | 1.1 | #42 | Initialize project | chore | none |
-    | 1.2 | #43 | Configure linting | chore | #42 |
-
-    ### 02-scaffold
-    - Change: openspec/changes/$ARGUMENTS-02-scaffold/
-    - Depends on: Stage 01 (#42-#44)
-
-    | Task | Issue | Title | Type | Depends On |
-    |------|-------|-------|------|------------|
-    | 1.1 | #45 | Create app shell | feat | #44 (stage 01) |
+    | Task | Ticket | Title | Type | Depends On |
+    |------|--------|-------|------|------------|
+    | 1.1  | <id>   | ...   | ...  | none       |
     ```
 
-18. **Print the final summary**:
+    When `DRY_RUN`, write the stage map locally with `DRY-N` ids; the file is git-revertable.
+
+23. Print the final summary listing each stage, change, ticket range, and description, plus next steps:
+
     ```
-    ## Staged Pipeline Complete: $ARGUMENTS
-
-    PRD: docs/prds/$ARGUMENTS.md
-    Stages: N
-    Total Issues: M
-    Stage Map: .tasks/$ARGUMENTS-stages.md
-
-    | Stage | Change | Issues | Description |
-    |-------|--------|--------|-------------|
-    | 01-setup | $ARGUMENTS-01-setup | #42-#44 | Project init, tooling |
-    | 02-scaffold | $ARGUMENTS-02-scaffold | #45-#48 | Routing, layout |
-
-    Next: Run /sdd-work <issue-number> starting from stage 01 issues.
-    Work through stages in order. After completing a stage, run /opsx:archive <change-name>.
+    Next: Run /sdd-work <ticket-id> starting from stage 01.
+    Work through stages in order. After all sub-tasks of a change are done,
+    /sdd-status will offer to archive that stage's OpenSpec change.
     ```
 
 ## Rules
-- The PRD is the source of truth. Do not invent requirements not in the PRD.
-- Respect Non-Goals — do not generate tasks for out-of-scope items.
-- If the PRD is vague on a point, ask the user rather than guessing.
-- Target 3-6 stages. Fewer defeats the purpose; more creates overhead for a small team.
-- Stage naming convention: `<feature>-NN-<slug>` with zero-padded numbers.
-- Create issues in strict stage order so cross-stage references use real issue numbers.
-- Use conventional commit types as issue title prefixes (feat, chore, test, docs).
-- Do NOT assign issues unless the user explicitly asks.
-- If any step fails (openspec CLI, gh CLI), stop and report the error clearly.
-- If existing stage changes are detected (`openspec/changes/$ARGUMENTS-01-*` exists), ask whether to continue existing work or start fresh.
-- The Swagger/OpenAPI doc is supplementary context for HOW the backend works. The PRD remains the source of truth for WHAT to build.
+
+- The PRD is the source of truth. Don't invent requirements outside it.
+- Respect Non-Goals.
+- Target 3-6 stages.
+- Stage naming: `<feature>-NN-<slug>` with zero-padded numbers.
+- Create tickets in strict stage order so cross-stage references use real ids.
+- Use abstract operation names from `sdd/trackers/protocol.md`.
+- Re-run safety: default to Continue; require explicit Regenerate.
+- If any step fails, stop and report clearly.

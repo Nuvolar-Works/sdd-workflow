@@ -6,7 +6,7 @@ compatibility: Requires openspec CLI.
 metadata:
   author: openspec
   version: "1.0"
-  generatedBy: "1.2.0"
+  generatedBy: "1.3.1"
 ---
 
 Propose a new change - create the change and generate all artifacts in one step.
@@ -47,15 +47,7 @@ When ready to implement, run /opsx:apply
    - `applyRequires`: array of artifact IDs needed before implementation (e.g., `["tasks"]`)
    - `artifacts`: list of all artifacts with their status and dependencies
 
-4. **Check for a project constitution** at `docs/constitution.md`.
-   - If it exists, read it and hold it in context. The constitution defines core principles, technology stack, folder structure, and quality gates.
-   - These constraints MUST be applied when generating all artifacts:
-     - **proposal.md**: Reference the constitution's tech stack in the technical approach
-     - **design.md**: Architecture MUST align with constitution's folder structure, component patterns, state management approach, and technology choices
-     - **tasks.md**: Tasks must follow constitution conventions (correct libraries, naming, file locations)
-   - If the constitution does not exist, proceed without it.
-
-5. **Create artifacts in sequence until apply-ready**
+4. **Create artifacts in sequence until apply-ready**
 
    Use the **TodoWrite tool** to track progress through the artifacts.
 
@@ -87,30 +79,7 @@ When ready to implement, run /opsx:apply
       - Use **AskUserQuestion tool** to clarify
       - Then continue with creation
 
-5. **Challenge the design** before declaring ready. Review the generated artifacts with a critical eye and present a brief challenge report:
-
-   ```
-   ## Design Challenge for <name>
-
-   ### Assumptions
-   - <List 2-4 key assumptions the design makes>
-
-   ### Risks & Pitfalls
-   - <Identify 2-4 things that could go wrong: over-engineering, missing edge cases, wrong abstraction level, performance traps, security concerns>
-
-   ### Simplification Opportunities
-   - <Is there a simpler approach we dismissed too quickly?>
-   - <Are we building abstractions we don't need yet?>
-
-   ### Open Questions
-   - <Anything that should be answered before implementation?>
-   ```
-
-   **Ask the user**: "Here's my design challenge. Want to adjust anything, or proceed as-is?"
-
-   If the user requests changes, update the relevant artifacts before proceeding.
-
-6. **Show final status**
+5. **Show final status**
    ```bash
    openspec status --change "<name>"
    ```

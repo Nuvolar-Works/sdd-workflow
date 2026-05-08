@@ -1,32 +1,38 @@
 ---
 name: sdd-constitution
-description: Generate a project constitution — coding standards, architectural rules, and quality gates that all SDD and OpenSpec skills enforce during artifact generation and code review.
-argument-hint: "[project-name]"
+description: Generate or update a project constitution — coding standards, architectural rules, and quality gates split across files in sdd/constitution/ that all SDD and OpenSpec skills enforce.
+argument-hint: "[project-name] [--dry-run]"
 disable-model-invocation: true
 ---
 
+## Input
+
+`$ARGUMENTS` parsed for an optional project name (used in the title) and an optional `--dry-run`. When `--dry-run`: the interview still runs and the file contents are drafted to the chat for review, but **no files are written**. Re-run without `--dry-run` to commit the constitution to disk.
+
 # Generate Project Constitution
 
-You are creating a project constitution — a living document that defines the coding standards, architectural rules, and quality gates for this project. All SDD and OpenSpec skills will read this document and enforce its principles during artifact generation, implementation, and code review.
+You are creating or updating the project constitution — a living document split across files in `sdd/constitution/` that defines coding standards, architectural rules, and quality gates. All SDD and OpenSpec skills load only the section files they need at the time they need them.
 
 ## Input
 
-The project name is: $ARGUMENTS (optional — used in the document title; defaults to the repo name)
+Project name: `$ARGUMENTS` (optional — used in the document title; defaults to the repo name)
 
 ## Phase 1: Gather Project Context
 
-1. **Check for an existing constitution**. Look for `docs/constitution.md`.
-   - If it exists, read it and ask the user: "A constitution already exists. Do you want to update it or start fresh?"
-   - If updating, use the existing content as a baseline and proceed to Phase 2.
+1. Check for an existing constitution. Look in this order:
+   - `sdd/constitution/index.md` (current layout)
+   - `docs/constitution.md` (legacy single-file layout)
 
-2. **Detect existing project signals**. Scan the codebase for clues about the current stack and conventions:
-   - Check `package.json`, `tsconfig.json`, `next.config.*`, `vite.config.*`, `angular.json`, etc.
-   - Check for existing linting configs (`.eslintrc*`, `.prettierrc*`, `biome.json`)
-   - Check for test frameworks (`vitest.config.*`, `jest.config.*`, `playwright.config.*`)
-   - Check `docs/prds/` for any PRDs with Technical Considerations filled in
-   - Check existing source code for patterns (folder structure, naming conventions, imports)
+   If either exists, read it and ask: "A constitution already exists. Update it, or start fresh?" If updating, use the existing content as a baseline. If the legacy single file exists but the split layout doesn't, plan to migrate to the split layout in Phase 3 regardless of the answer.
 
-3. **Present findings** to the user:
+2. Detect existing project signals:
+   - Build / framework configs: `package.json`, `tsconfig.json`, `next.config.*`, `vite.config.*`, `angular.json`, etc.
+   - Linting: `.eslintrc*`, `.prettierrc*`, `biome.json`
+   - Testing: `vitest.config.*`, `jest.config.*`, `playwright.config.*`
+   - Existing PRDs in `sdd/prds/` or `docs/prds/` for any "Technical Considerations" sections
+   - Source code patterns (folder structure, naming, imports)
+
+3. Present findings to the user:
    ```
    ## Detected Project Context
 
@@ -39,180 +45,119 @@ The project name is: $ARGUMENTS (optional — used in the document title; defaul
    - Folder structure: <detected pattern or "not detected">
    ```
 
-   Ask: "Here's what I detected. Please confirm, correct, or add details for anything I missed. You can also provide your full stack and conventions if you prefer."
-
-   Wait for user input before proceeding.
+   Ask: "Confirm, correct, or add details for anything I missed."
 
 ## Phase 2: Interview for Principles
 
-4. **For any areas not covered by detection or user input**, ask targeted questions. Group them and ask in batches (not one by one) to keep momentum:
+4. For any areas not covered, ask in batches (not one by one) to keep momentum:
 
-   **Batch 1 — Stack & Architecture** (skip items already known):
-   - Framework and version?
-   - Language and strictness settings?
-   - UI library / component primitives?
-   - Styling approach?
-   - State management strategy?
-   - Routing approach?
-   - Form handling / validation?
-   - Internationalization?
+   **Batch 1 — Stack & Architecture** (skip items already known): framework + version, language + strictness, UI primitives, styling approach, state management, routing, forms/validation, i18n.
 
-   **Batch 2 — Conventions & Patterns** (skip items already known):
-   - Folder structure pattern? (feature-based, layer-based, domain-based)
-   - Naming conventions? (files, components, variables, types)
-   - Component patterns? (composition style, props patterns, co-location rules)
-   - Import conventions? (barrel exports, path aliases, absolute vs relative)
-   - Error handling approach?
+   **Batch 2 — Conventions & Patterns** (skip known): folder pattern (feature-/layer-/domain-based), naming conventions, component patterns, import conventions, error handling.
 
-   **Batch 3 — Quality & Governance**:
-   - What quality gates must pass before code is considered done? (lint, test, build, type-check)
-   - Minimum test expectations? (unit tests required? E2E? coverage threshold?)
-   - Accessibility requirements?
-   - Performance constraints?
-   - Security rules?
-   - Any NON-NEGOTIABLE rules the team has learned from past incidents?
+   **Batch 3 — Quality & Governance**: quality gates (lint, build, test, type-check), test expectations (unit / E2E / coverage), accessibility, performance, security, NON-NEGOTIABLE rules from past incidents.
 
-   For each batch, present what you've detected or inferred as defaults and let the user confirm or override. Only ask about genuinely unknown items.
+   For each batch, present detected/inferred defaults and let the user confirm or override. Only ask about genuinely unknown items.
 
-## Phase 3: Generate the Constitution
+## Phase 3: Generate the Split Constitution
 
-5. **Generate `docs/constitution.md`** using the following structure. Adapt the number of principles to what's relevant — don't pad with generic rules. Every principle must be specific and actionable.
+5. Create the directory structure if it doesn't exist:
+   ```bash
+   mkdir -p sdd/constitution
+   ```
 
+6. Write **`sdd/constitution/index.md`** with:
+   - The Sync Impact Report HTML comment block at the top (version 0.0.0 → 1.0.0 for a new constitution; bump appropriately for an update).
+   - A short table of contents listing the section files and which skills read them (see existing example for shape).
+   - A Governance section (the constitution supersedes other conventions; amendments require a PR with updated Sync Impact Report; one approver minimum).
+   - The version + ratified + last-amended footer.
+
+7. Write **`sdd/constitution/principles.md`** with all Core Principles. For each principle:
+   - Title with `(NON-NEGOTIABLE)` or `(RECOMMENDED)` suffix.
+   - Concrete description of what MUST or SHOULD happen.
+   - Rationale paragraph.
+   - Mark NON-NEGOTIABLE only when the user explicitly said so or when it represents safety/correctness (e.g. TypeScript strict mode, no `any`). Default to RECOMMENDED otherwise.
+
+8. Write **`sdd/constitution/tech-stack.md`** as a flat bullet list of technologies and versions:
    ```markdown
-   <!--
-   ==============================================================================
-   SYNC IMPACT REPORT
-   ==============================================================================
-   Version change: 0.0.0 → 1.0.0 (initial ratification)
-
-   Modified principles: N/A
-   Added sections: <list sections>
-   Removed sections: N/A
-
-   Follow-up TODOs: <any unresolved items, or "None">
-   ==============================================================================
-   -->
-
-   # <Project Name> Constitution
-
-   ## Core Principles
-
-   ### I. <Principle Title> (NON-NEGOTIABLE | RECOMMENDED)
-
-   <Clear, specific description of what MUST or SHOULD be done, with concrete
-   examples of correct and incorrect usage where helpful.>
-
-   **Rationale**: <Why this rule exists — what problem it prevents or what value
-   it ensures. Link to past incidents if applicable.>
-
-   <!-- Repeat for each principle -->
-
-   ## Technology Stack
-
-   - **Framework**: <framework and version>
-   - **Language**: <language and config>
-   - **UI Primitives**: <component library>
-   - **Styling**: <approach — what is allowed and forbidden>
-   - **Component Variants**: <CVA, styled-components, etc.>
-   - **State Management**: <approach and when to use what>
-   - **Routing**: <approach>
-   - **Form Validation**: <library>
-   - **Internationalization**: <approach>
-   - **Testing**: <frameworks and expectations>
-   - **Linting/Formatting**: <tools>
-   - **Build Tool**: <tool>
-   - **Package Manager**: <tool>
-
-   ## Folder Structure
-
-   <Describe the expected folder structure with brief explanations of what
-   belongs where. Use a tree format.>
-
-   ```
-   src/
-   ├── app/          — <description>
-   ├── components/   — <description>
-   │   ├── ui/       — <description>
-   │   └── <feature>/— <description>
-   ├── lib/          — <description>
-   ├── stores/       — <description>
-   └── types/        — <description>
+   - **Framework**: ...
+   - **Language**: ...
+   - ... etc
    ```
 
-   ## Development Workflow
+9. Write **`sdd/constitution/folder-structure.md`** with:
+   - A code-fenced tree showing the expected `src/` layout with one-line descriptions of each folder.
+   - A naming-conventions table (Files, Components, Hooks, Constants, Types, Props Interfaces, API Functions, etc.).
+   - Any nested rules (i18n hook conventions, variable naming, etc.) the user specified.
 
-   - **Branching**: <convention>
-   - **Commits**: <convention>
-   - **Constitution compliance**: Every PR and code review should verify principles
-     are followed.
+10. Write **`sdd/constitution/quality-gates.md`** with:
+    - The numbered list of NON-NEGOTIABLE quality gates (`npm run lint`, `npm run build`, type-check, tests, coverage threshold, RBAC verification).
+    - Error handling rules.
+    - Specification / Plan / Task content requirements.
+    - Development workflow notes (cross-reference CLAUDE.md for git conventions instead of duplicating them).
 
-   ## Quality Gates (NON-NEGOTIABLE)
+11. If the project has UI / design conventions, write **`sdd/constitution/design-system.md`** with:
+    - Color tokens (table: token, use case, opacity variants).
+    - Migration rules (legacy classes → semantic tokens).
+    - Font, shadow scale, border radius, animations, dark mode, header controls, sidebar conventions.
+    - Skip this file if the project has no UI / design system.
 
-   All of the following MUST pass before work is considered complete:
+12. If the project has shared utilities with mandatory usage rules, write **`sdd/constitution/utilities.md`** with each rule and the import path that must be used.
 
-   1. <gate 1 — e.g., `npm run lint` passes with zero errors>
-   2. <gate 2 — e.g., `npm run build` compiles without errors>
-   3. <gate 3 — e.g., TypeScript strict mode passes>
-   4. <gate 4 — e.g., minimum test coverage>
+13. Tailor every section to the project. Do NOT pad with generic best-practices content. If a section would be empty for this project, skip it and remove the corresponding row from `index.md`'s table of contents.
 
-   ## Governance
+## Phase 4: Cross-Reference Validation
 
-   This constitution supersedes all other project conventions. Where conflicts
-   arise between this document and other guidance, this constitution takes
-   precedence.
+14. After all section files are drafted, scan each `.md` for markdown links to sibling files (`[design-system.md](design-system.md)`, etc.). For each link:
+    - If the target file exists at `sdd/constitution/<target>.md` → keep the link.
+    - If the target is **optional** (`design-system.md`, `utilities.md`) and was intentionally skipped (because the project has no UI / no shared utility rules) → rewrite the link inline as `<see <target> when added>` so it's clearly aspirational rather than a dangling reference.
+    - If the target is **required** (`principles.md`, `tech-stack.md`, `folder-structure.md`, `quality-gates.md`, `index.md`) and missing → abort and report the inconsistency. The constitution is incomplete.
 
-   **Amendment procedure**:
-   1. Propose the change as a PR that updates this file.
-   2. The PR MUST include an updated Sync Impact Report (HTML comment at the top).
-   3. At least one other contributor MUST approve the PR before merge.
+    This validation runs before writing files in `--dry-run` mode (against the in-memory drafts) and after writing in normal mode (final consistency check).
 
-   **Version**: 1.0.0 | **Ratified**: <YYYY-MM-DD> | **Last Amended**: <YYYY-MM-DD>
-   ```
+## Phase 5: Migration of Legacy File
 
-6. **Tailor the principles** to the specific project:
-   - Do NOT include generic filler principles. Every principle must reflect something the user specified or that was detected from the codebase.
-   - Mark rules as `NON-NEGOTIABLE` only if the user explicitly said so or if they represent fundamental safety/correctness concerns (e.g., TypeScript strict mode, no `any`).
-   - Mark rules as `RECOMMENDED` for conventions that are preferred but may have legitimate exceptions.
-   - Include **Rationale** for every principle — this helps future developers understand *why*, not just *what*.
+15. If a legacy `docs/constitution.md` exists and the user did not opt into starting fresh:
+    - Confirm with the user that they want to remove the legacy file (since the split version is now in place).
+    - If yes, `git rm docs/constitution.md` (or note it in the user-facing summary so they can do it manually).
+    - If no, leave it in place — skills will fall back to the legacy file if `sdd/constitution/` is not yet present.
 
-## Phase 4: Review and Ratify
+    When `DRY_RUN`: skip this phase entirely. The user can run again without `--dry-run` to commit the new constitution and then rerun once more to migrate the legacy file.
 
-7. **Present the full constitution** to the user for review.
+## Phase 6: Review and Ratify
 
-8. **Ask**: "Review the constitution above. You can:
-   - Approve it as-is
-   - Request changes to any principles
-   - Add principles I missed
-   - Change any NON-NEGOTIABLE ↔ RECOMMENDED classifications"
+16. Present a summary of the generated files (paths + line counts) and the Sync Impact Report block to the user. Ask:
+    > Review the constitution. You can: approve as-is, request changes to any section, add principles I missed, or change any NON-NEGOTIABLE ↔ RECOMMENDED classifications.
 
-9. **Apply any requested changes** and present the updated version.
+17. Apply requested changes and re-present.
 
-10. **Once approved**, write the final version to `docs/constitution.md`.
+18. Once approved, the files are already on disk (or, in `--dry-run`, drafted to the chat only). Print the final summary:
 
-11. **Print summary**:
     ```
     ## Constitution Ratified
 
-    Location: docs/constitution.md
+    Location: sdd/constitution/
+    Files: index.md, principles.md, tech-stack.md, folder-structure.md, quality-gates.md, design-system.md (if applicable), utilities.md (if applicable)
     Principles: N
     Quality Gates: N
     Version: 1.0.0
 
-    This constitution will be enforced by:
-    - /sdd-from-prd and /sdd-staged — artifact generation follows these standards
-    - /opsx:propose — design and task generation respects these rules
-    - /sdd-work — implementation follows these patterns
-    - /sdd-verify — code review checks constitution compliance
+    Loaded by:
+    - /sdd-from-prd and /sdd-staged — tech-stack.md + folder-structure.md
+    - /sdd-work — principles.md + folder-structure.md + quality-gates.md
+    - /sdd-verify — principles.md + quality-gates.md (+ design-system.md when UI changes, utilities.md when API client changes)
+    - /sdd-tasks-from-story — tech-stack.md + folder-structure.md
 
     To update the constitution later, run /sdd-constitution again.
     ```
 
 ## Rules
-- The constitution MUST be specific to this project. Do not generate generic "best practices" documents.
-- Every principle needs a Rationale. No rules without reasons.
-- The user has final say on all principles. Do not argue — present your case and defer.
-- Do NOT include rules that duplicate what's already in CLAUDE.md (git conventions, branch naming, etc.) — reference CLAUDE.md for those.
-- If the project has no code yet (greenfield), rely entirely on user input for conventions.
-- Keep the document concise. Aim for principles that are easy to scan and enforce, not an essay.
-- The Sync Impact Report header is for tracking changes across versions — always include it.
-- Use the current date for ratification.
+
+- The constitution MUST be specific to this project. No generic "best practices" filler.
+- Every principle needs a Rationale.
+- The user has final say. Present your case and defer.
+- Do NOT duplicate what's already in CLAUDE.md (git conventions, branch naming) — reference CLAUDE.md instead.
+- For greenfield projects with no code, rely entirely on user input for conventions.
+- Keep each section file scannable. The point of the split is that skills read only what they need.
+- The Sync Impact Report block is mandatory in `index.md` — always include it, always bump the version when amending.
+- Use today's date for ratification.
