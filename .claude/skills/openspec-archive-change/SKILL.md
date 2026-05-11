@@ -82,6 +82,18 @@ Archive a completed change in the experimental workflow.
    mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-DD-<name>
    ```
 
+   **Archive the SDD mapping (if present):**
+
+   If `sdd/tasks/<name>.md` exists, the change has a tracker-side mapping that `/sdd-doctor` Check #9 will flag as an orphan once the change directory has moved. Ask via **AskUserQuestion**:
+
+   - **Archive the mapping too (recommended)** — rename to `sdd/tasks/<name>.archived.md` so the doctor knows to skip it.
+     ```bash
+     mv sdd/tasks/<name>.md sdd/tasks/<name>.archived.md
+     ```
+   - **Leave the mapping** — for cases where the user wants `/sdd-status` to surface the change in a "stale mapping" warning until they handle it manually.
+
+   If `sdd/tasks/<name>.md` does not exist, skip this prompt entirely.
+
 6. **Display summary**
 
    Show archive completion summary including:
@@ -89,6 +101,7 @@ Archive a completed change in the experimental workflow.
    - Schema that was used
    - Archive location
    - Whether specs were synced (if applicable)
+   - Whether the SDD mapping was archived alongside (if applicable)
    - Note about any warnings (incomplete artifacts/tasks)
 
 **Output On Success**
@@ -100,6 +113,7 @@ Archive a completed change in the experimental workflow.
 **Schema:** <schema-name>
 **Archived to:** openspec/changes/archive/YYYY-MM-DD-<name>/
 **Specs:** ✓ Synced to main specs (or "No delta specs" or "Sync skipped")
+**Mapping:** ✓ sdd/tasks/<name>.archived.md (or "Left in place" or "No mapping file")
 
 All artifacts complete. All tasks complete.
 ```

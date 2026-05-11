@@ -28,8 +28,9 @@ You are creating tracker tickets from an OpenSpec change's artifacts. The active
 5. Locate the change directory at `openspec/changes/$ARGUMENTS/`. If it does not exist, tell the user to run `/opsx:propose` first and stop.
 
 6. Detect existing tickets:
-   - Read `openspec/changes/$ARGUMENTS/tasks.md`. Scan section headers for ticket-id annotations (`(#42)` or `[TT-457]`).
+   - Read `openspec/changes/$ARGUMENTS/tasks.md`. Scan section headers for ticket-id annotations (`## N. <name> (#42)` or `## N. <name> [TT-457]`). Capture (section-number → id) pairs.
    - Read `sdd/tasks/$ARGUMENTS.md` if present. Capture rows.
+   - Merge the two id sources. If they disagree (annotations present without mapping rows, or rows in mapping without an annotation), note the divergence for the report.
    - For each captured id, run `FetchTicket(id)` to confirm it still exists and capture its current state.
 
 7. If any existing tickets are detected, present:
@@ -37,7 +38,9 @@ You are creating tracker tickets from an OpenSpec change's artifacts. The active
    ```
    ## Existing State Detected
    OpenSpec change: openspec/changes/$ARGUMENTS/
+   Annotations in openspec/changes/$ARGUMENTS/tasks.md: <count> section headers carry ids
    Mapping: sdd/tasks/$ARGUMENTS.md (<count> tickets)
+   Divergence: <none | sections N,M annotated but missing from mapping | rows in mapping but no annotation | ...>
 
    Tracker state:
    - <id>: <status>, <comment count> comments

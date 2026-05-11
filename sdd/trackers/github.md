@@ -237,3 +237,31 @@ Capture the PR URL from output. Extract the PR number from the URL tail.
 ## LinkTicketToPR(ticket, pr)
 
 For GitHub-only flows, the `Closes #<ticket>` line in the PR body handles linkage on merge. Still call `CloseTicket(ticket, "Resolved in PR #<pr>.")` immediately after PR creation because the PR targets `develop`, not the default branch.
+
+## GetLinkedPR(id)
+
+Resolve the PR linked to a closed issue. Used by `/sdd-status` Phase 5 Class A to decide whether a change is ready to archive — relying on comment-text scans alone (`"Resolved in PR #<n>"`) is brittle if the comment was edited or never posted.
+
+Two-tier lookup:
+
+1. **API (preferred)** — query GitHub's GraphQL link via `gh`:
+   ```bash
+   gh issue view <id> --json closedByPullRequestsReferences \
+     -q '.closedByPullRequestsReferences[]?.number'
+   ```
+   `closedByPullRequestsReferences` is populated for any PR that mentions `Closes #<id>` / `Fixes #<id>` / `Resolves #<id>` in its body, regardless of whether the issue was auto-closed or manually closed. This is the primary path because `/sdd-verify` always writes `Closes #<id>` into the PR body.
+
+2. **Fallback** — when the API returns empty (PR body lacks closing keyword, or older PRs created before the convention), scan the issue's comments for the canonical closing comment:
+   ```bash
+   gh issue view <id> --json comments \
+     --jq '.comments | map(select(.body | test("Resolved in PR #([0-9]+)"))) | last'
+   ```
+   Extract the PR number from the matched body via regex `Resolved in PR #([0-9]+)`.
+
+For each candidate PR number, check merge state:
+
+```bash
+gh pr view <pr-number> --json state,mergedAt -q '.state'
+```
+
+Return `{ pr_number, state, merged_at }`. State is one of `MERGED`, `CLOSED` (not merged), `OPEN`. If both tiers yield nothing, return `null` — the caller treats that as "closed without merged PR — needs manual review."

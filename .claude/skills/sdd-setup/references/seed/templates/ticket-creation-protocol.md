@@ -42,8 +42,8 @@ For each section, derive:
 | **Acceptance Criteria** | Match GIVEN-WHEN-THEN scenarios from the relevant `specs/*.md` file (heuristic: section-title keyword match). If no scenario matches, derive 2-4 criteria from the section's subtasks. |
 | **Implementation Hints** | Relevant excerpts from `design.md` for this section's scope. |
 | **Design Excerpt** | (sub-task only — `is_subtask=true`) 5-15 line quote from the relevant section of `design.md` including its heading. |
-| **API Integration** | (sub-task only, integration goals only) Endpoint signature + request/response shape from `api-contract.yaml`. Skip section if not an integration goal (heuristic: section title contains `integration`, `API`, `endpoint`, `client`, or `wiring`; or description references the API contract). |
-| **Definition of Done** | (sub-task only) Pull the matching block from `sdd/templates/definition-of-done.md` keyed by goal type (UI / integration / setup / refactor). Trivial goals get a one-line DoD pointing back to the template. |
+| **API Integration** | (sub-task only) Include the section iff goal type is **Integration** per `sdd/templates/definition-of-done.md` § Goal-type detection. Body: endpoint signature + request/response shape from `api-contract.yaml`. |
+| **Definition of Done** | (sub-task only) Determine goal type via `sdd/templates/definition-of-done.md` § Goal-type detection, then pull the matching block per § Blocks. Apply the inline-vs-reference rule from § Inlining vs reference (Setup / Refactor get a one-line reference; UI / Integration / Test get the full inlined block). |
 | **Dependencies** | Tickets created in earlier sections this run. Use real ids captured from previous `CreateTicket` returns. For a fresh first section, `None`. |
 
 ## Step 4: Build the ticket body

@@ -36,28 +36,54 @@ You are verifying completed work and creating a PR.
    git rev-parse --verify <base> 2>/dev/null && echo "<base>" || echo "main"
    ```
 
+## Phase 1.5: OpenSpec Context (lazy, only if linked)
+
+Mirrors `/sdd-work`'s spec-loading so the Design Alignment check in Phase 2 has actual context to compare against. Skip this entire phase if no `Source:` footer is found.
+
+8. Scan the ticket body for a footer:
+   ```
+   Source: openspec/changes/<CHANGE_NAME>/tasks.md
+   ```
+   If absent, hold `CHANGE_NAME = none` and skip to Phase 2 — the Design Alignment check will report `N/A`.
+
+9. Open `openspec/changes/<CHANGE_NAME>/tasks.md`. Find the section header containing the ticket id (annotated as `(#N)` for GitHub or `[KEY]` for Jira). Note the section title.
+
+10. **Locate the relevant spec file**, in order of preference:
+    a. Read the `Spec section:` footer in the ticket body — sub-task tickets created by `/sdd-tasks-from-story` carry an explicit pointer. When present, use it without prompting.
+    b. Heuristic fallback when no footer: glob `openspec/changes/<CHANGE_NAME>/specs/*.md` and score each by keyword overlap with the section title.
+       - **Single match**: use it.
+       - **Clear winner** (top score ≥ 2× the runner-up): use it; the verification report's Design Alignment row notes "spec inferred from <file>".
+       - **Ambiguous** (top two within 1 of each other, or ties at the top): the Design Alignment row reports `AMBIGUOUS: matched <file-a>, <file-b> — could not pick a canonical spec`. Do not silently pick. The reviewer should fix the ticket body to carry an explicit `Spec section:` footer.
+       - **No match**: Design Alignment row is `N/A — no spec found for change <CHANGE_NAME>`.
+
+11. Extract only the relevant section of `openspec/changes/<CHANGE_NAME>/design.md` via grep (section name match). Do NOT read the whole file.
+
+12. Read `openspec/changes/<CHANGE_NAME>/proposal.md` (it's short).
+
+13. Hold the spec excerpt, design excerpt, change name, and section title in context for Phase 2's Design Alignment check.
+
 ## Phase 2: Verify
 
-8. Review all changes on this branch versus the base:
-   ```bash
-   git log <base>..HEAD --oneline
-   git diff <base>..HEAD --stat
-   ```
-   Read through the changed files to understand what was implemented.
+14. Review all changes on this branch versus the base:
+    ```bash
+    git log <base>..HEAD --oneline
+    git diff <base>..HEAD --stat
+    ```
+    Read through the changed files to understand what was implemented.
 
-9. Check each acceptance criterion from the ticket body:
-   - Verify it is met by examining the code.
-   - Mark as PASS or FAIL.
-   - If FAIL, explain what is missing.
+15. Check each acceptance criterion from the ticket body:
+    - Verify it is met by examining the code.
+    - Mark as PASS or FAIL.
+    - If FAIL, explain what is missing.
 
-10. Run project checks (if configured):
+16. Run project checks (if configured):
     ```bash
     npm test 2>&1 || true
     npm run lint 2>&1 || true
     npm run build 2>&1 || true
     ```
 
-11. Read these constitution section files (lazy load — only what review needs):
+17. Read these constitution section files (lazy load — only what review needs):
     - `sdd/constitution/principles.md` (always)
     - `sdd/constitution/quality-gates.md` (always)
     - `sdd/constitution/design-system.md` — only if changed files include UI components (under `src/components/` or `src/app/` route files)
@@ -65,9 +91,9 @@ You are verifying completed work and creating a PR.
 
     Legacy fallback: read `docs/constitution.md` if `sdd/constitution/` is absent.
 
-12. Read `sdd/templates/code-review-checklist.md` and run through each section in order against the changed files. For each category, mark CLEAN or list specific findings with file:line references.
+18. Read `sdd/templates/code-review-checklist.md` and run through each section in order against the changed files. For each category, mark CLEAN or list specific findings with file:line references. The Design Alignment check (checklist § 5) uses the spec + design excerpts captured in Phase 1.5; if `CHANGE_NAME` was `none`, that row is `N/A`.
 
-13. Report verification results in this shape:
+19. Report verification results in this shape:
 
     ```
     ## Verification Report for <ticket-id>: <title>
@@ -93,17 +119,17 @@ You are verifying completed work and creating a PR.
     <Overall assessment>
     ```
 
-14. If any acceptance criterion FAILs or any project check fails, tell the user what needs fixing and stop. Do NOT create a PR for incomplete work.
+20. If any acceptance criterion FAILs or any project check fails, tell the user what needs fixing and stop. Do NOT create a PR for incomplete work.
 
-15. If code review flags issues, present them to the user as recommendations (not blockers). Ask: "I found some code review items. Want to address them before the PR, or proceed as-is?"
+21. If code review flags issues, present them to the user as recommendations (not blockers). Ask: "I found some code review items. Want to address them before the PR, or proceed as-is?"
 
-16. If everything passes (or the user chooses to proceed), ask: "Ready to push and create a PR?"
+22. If everything passes (or the user chooses to proceed), ask: "Ready to push and create a PR?"
 
 ## Phase 3: Create PR
 
-17. Run `PushBranch(<current-branch>)` from the active VCS recipe. When `DRY_RUN`, print `[DRY RUN] would PushBranch(<branch>)`.
+23. Run `PushBranch(<current-branch>)` from the active VCS recipe. When `DRY_RUN`, print `[DRY RUN] would PushBranch(<branch>)`.
 
-18. Read `sdd/templates/pr-body.md` for the PR body structure. Substitute the placeholders:
+24. Read `sdd/templates/pr-body.md` for the PR body structure. Substitute the placeholders:
     - Summary, Changes, Acceptance Criteria, Testing
     - `<TICKET_CLOSE_LINE>`:
       - GitHub-only: `Closes #<ticket-id>`
@@ -111,9 +137,9 @@ You are verifying completed work and creating a PR.
 
     Run `CreatePR(payload)` from the active VCS recipe. Capture the PR id and URL. When `DRY_RUN`, print the full payload and the intended `[DRY RUN] would CreatePR(...)` line; assign `DRY-PR-1` as the synthetic id for downstream use.
 
-19. Print the PR URL (or synthetic id when `DRY_RUN`) so the user can review.
+25. Print the PR URL (or synthetic id when `DRY_RUN`) so the user can review.
 
-20. Run `LinkTicketToPR(<ticket-id>, <pr>)` from the active tracker recipe. This:
+26. Run `LinkTicketToPR(<ticket-id>, <pr>)` from the active tracker recipe. This:
     - For GitHub-only: calls `CloseTicket(<ticket-id>, "Resolved in PR #<pr-id>.")` because PRs target `develop` (not the default branch) and GitHub only auto-closes on default-branch merge.
     - For Jira: posts a comment with the PR URL on the ticket and runs `UpdateTicketStatus(<ticket-id>, "in_review")`.
     - For hybrid (Jira tickets, GitHub PRs): same as Jira — Jira gets the comment + status transition, GitHub PR carries the `Resolves <JIRA-KEY>` reference.
@@ -122,7 +148,7 @@ You are verifying completed work and creating a PR.
 
 ## Phase 4: Hand-off Hint
 
-21. Tell the user:
+27. Tell the user:
     ```
     PR opened: <pr-url>
     Once the PR merges, run /sdd-status to detect completion. /sdd-status

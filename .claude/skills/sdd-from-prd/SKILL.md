@@ -30,15 +30,19 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
 
 6. Detect existing state for this feature:
    - Does `openspec/changes/<feature-slug>/` already exist? List its contents.
+   - If `openspec/changes/<feature-slug>/tasks.md` exists, scan its section headers for ticket-id annotations (`## N. <name> (#42)` or `## N. <name> [TT-457]`). Capture (section-number → id) pairs.
    - Does `sdd/tasks/<feature-slug>.md` already exist? Read and capture ticket ids.
-   - For each existing ticket id, run `FetchTicket(id)` to confirm it still exists and capture current state.
+   - Merge the two id sources. If they disagree (annotations present without mapping rows, or vice versa), note the divergence for the report.
+   - For each captured id, run `FetchTicket(id)` to confirm it still exists and capture current state.
 
 7. If existing state is detected, present:
 
    ```
    ## Existing State Detected
    OpenSpec change: openspec/changes/<feature-slug>/ (artifacts: <list>)
+   Annotations in openspec/changes/<feature-slug>/tasks.md: <count> section headers carry ids
    Mapping: sdd/tasks/<feature-slug>.md (<count> tickets)
+   Divergence: <none | sections N,M annotated but missing from mapping | rows in mapping but no annotation | ...>
 
    Tracker state:
    - <id>: <status>, <comment count> comments

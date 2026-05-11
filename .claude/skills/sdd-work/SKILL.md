@@ -78,8 +78,12 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 14. Open `openspec/changes/<CHANGE_NAME>/tasks.md`. Find the section header containing the ticket id. Note the section title.
 
 15. **Locate the relevant spec file**, in order of preference:
-    a. Read the `Spec section:` footer in the ticket body — tickets created by `/sdd-tasks-from-story` carry an explicit pointer.
-    b. Heuristic fallback when no footer: glob `specs/*.md`, grep each for keywords from the section title, read the strongest match.
+    a. Read the `Spec section:` footer in the ticket body — tickets created by `/sdd-tasks-from-story` carry an explicit pointer. When present, use it without prompting.
+    b. Heuristic fallback when no footer: glob `specs/*.md` and score each by keyword overlap with the section title.
+       - **Single match** (one file has any hits): use it.
+       - **Clear winner** (top file's score ≥ 2× the runner-up's): use it; note "spec inferred from <file> — confirm if wrong" in the plan in Phase 2.
+       - **Ambiguous** (top two scores within 1 of each other, or two+ files tied at the top): list the top 2–3 candidates with their scores and ask: "Multiple specs match this section. Which one is correct? (1/2/3/none — describe instead)". Do not silently pick.
+       - **No match**: tell the user no spec maps cleanly to this ticket and ask whether to proceed without a spec context or pick one manually.
 
 16. Extract only the relevant section of `design.md` via grep. Do NOT read the whole file.
 
@@ -146,6 +150,8 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 
     Ask: "Does this plan look good? Should I proceed?" Don't write code until the user confirms.
 
+    When `DRY_RUN`: print `[DRY RUN] would CreateBranch(<branch-name>, <base>) and implement the plan above`, then stop the skill. Code edits, branch creation, and commits don't happen in dry-run mode.
+
 27. **Resume mode**: skip the codebase research. Walk through each AC and report PASS / PARTIAL / NOT STARTED based on commit history (`git log <base>..HEAD`) and a brief diff scan. Present:
 
     ```
@@ -165,6 +171,8 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
     ```
 
     Ask: "Continue with the suggested next step?" or "Stop and let me decide?"
+
+    When `DRY_RUN`: print `[DRY RUN] would continue work on <current-branch> per the suggested next step`, then stop the skill.
 
 28. **Fix-from-PR mode**: build a fix plan from the PR review threads. For each thread:
     - The reviewer's concern (verbatim).
@@ -186,13 +194,15 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 
     Ask: "Does this fix plan look right? Should I proceed?"
 
+    When `DRY_RUN`: print `[DRY RUN] would apply the fix plan on <current-branch> and push fixes`, then stop the skill.
+
 ## Phase 3: Implement
 
 29. **Fresh mode only**: create a feature branch via `CreateBranch(<branch-name>, <base>)`. Branch name: `<type>/<ticket-id-slug>-<short-description>` per the conventions in CLAUDE.md.
 
     **Resume / Fix-from-PR**: stay on the current branch. Skip branch creation.
 
-    When `DRY_RUN`: print `[DRY RUN] would CreateBranch(...)` and stop the entire skill — code edits don't happen in dry-run mode.
+    (`DRY_RUN` has already halted the skill at the end of Phase 2 — see steps 26 / 27 / 28.)
 
 30. Implement the changes following the plan. Follow existing patterns. Add or update tests if AC requires. Keep changes focused.
 

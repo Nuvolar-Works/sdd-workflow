@@ -33,10 +33,27 @@ When ready to implement, run /opsx:apply
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Create the change directory**
+2. **Re-run safety: check for an existing change**
+
+   Before creating, check whether `openspec/changes/<name>/` already exists:
+
+   ```bash
+   ls openspec/changes/<name>/ 2>/dev/null
+   ```
+
+   If present, list its contents and ask via **AskUserQuestion**:
+
+   - **Continue (recommended)** — keep the existing artifacts; Step 4's status loop will only create what's missing.
+   - **Abort** — stop. If the user wants a full clean regeneration, they should manually delete `openspec/changes/<name>/` and re-run.
+
+   On **Continue**, skip the `openspec new change` call below (the directory already exists) and proceed to Step 3.
+
+   If the directory does not exist, run:
+
    ```bash
    openspec new change "<name>"
    ```
+
    This creates a scaffolded change at `openspec/changes/<name>/` with `.openspec.yaml`.
 
 3. **Get the artifact build order**
@@ -89,8 +106,8 @@ When ready to implement, run /opsx:apply
 After completing all artifacts, summarize:
 - Change name and location
 - List of artifacts created with brief descriptions
-- What's ready: "All artifacts created! Ready for implementation."
-- Prompt: "Run `/opsx:apply` or ask me to implement to start working on the tasks."
+- What's ready: "All artifacts created! Ready to create tickets and implement."
+- Prompt: "Run `/sdd-create-tickets <change>` to create tickets in your tracker, then `/sdd-work <ticket-id>` to start implementing the first one."
 
 **Artifact Creation Guidelines**
 

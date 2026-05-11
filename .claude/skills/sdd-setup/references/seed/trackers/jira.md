@@ -141,4 +141,18 @@ After the PR is created in GitHub:
 1. `CommentOnTicket(<jira-key>, "PR opened: <pr-url>")`.
 2. `UpdateTicketStatus(<jira-key>, "in_review")`.
 
-Once the PR merges, `/sdd-verify` (or a follow-up step) calls `CloseTicket(<jira-key>, "Resolved in <pr-url>.")`.
+Once the PR merges, `/sdd-status` Phase 5 (Class A.1) detects the merge and calls `UpdateTicketStatus(<jira-key>, "done")` automatically. The `/sdd-verify` skill does not transition Jira sub-tasks to `done` — only to `in_review` — because PR merge happens later.
+
+## GetLinkedPR(id)
+
+Resolve the GitHub PR linked to a Jira ticket. Used by `/sdd-status` Phase 5 Class A.1 to detect that a sub-task in `in_review` has its PR merged and is ready to transition to `done`.
+
+1. `FetchComments(id)`.
+2. Scan comments newest-first for either:
+   - `PR opened: <url>` (posted by `LinkTicketToPR` above), or
+   - any GitHub PR URL matching `https?://github\.com/[^/]+/[^/]+/pull/(\d+)`.
+   Extract the PR number from the first match.
+3. If no PR URL is found, return `null`.
+4. Otherwise call `gh pr view <pr_number> --json state,mergedAt -q '{state, mergedAt}'` and return `{ pr_number, state, merged_at }`. (`gh` is available because `vcs: github` is the only supported VCS — see `sdd/config.example.json`.)
+
+State is one of `MERGED`, `CLOSED` (not merged), `OPEN`.

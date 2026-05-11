@@ -63,6 +63,6 @@ Pass the **included** highlights forward to Phase 2 of `/sdd-tasks-from-story` a
 Highlights tagged **Blocker** are saved in a `blocker_candidates` list. They surface again at the design challenge (Phase 2.5) with three resolution options:
 - **Accommodate in spec** — the design adapted to the blocker.
 - **Accept and proceed** — the spec proceeds optimistically; `/sdd-work` will post a Blocker comment when implementation actually hits the issue.
-- **Track as follow-up ticket now** — call `CreateRelatedTicket(payload, parent_id=<story-key>, link_type="is_blocked_by")` immediately so the gap exists in the tracker before sub-tasks are created.
+- **Track as follow-up ticket now** — call `CreateRelatedTicket(payload, related_id=<story-key>, link_type="is_blocked_by")` immediately so the gap exists in the tracker before sub-tasks are created.
 
 The user picks per-blocker. Default is **Accept and proceed**.

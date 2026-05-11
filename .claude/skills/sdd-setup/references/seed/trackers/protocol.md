@@ -25,6 +25,7 @@ Tracker-neutral operations used by SDD skills. Each operation has a concrete rec
 - **`FetchComments(id, limit?)`** — return an ordered list of `{author, created_at, body}` for the ticket, oldest first. Default `limit` = 30 (most recent). Pass `limit = "all"` to get the full thread (rare; use only when reasoning about long histories). Used by `/sdd-tasks-from-story` Phase 1.5 (story comments) and `/sdd-work` Phase 1.6 (sub-task + parent comments).
 - **`AssignTicket(id, user)`** — assign the ticket to a user. `user` may be `@me` for the current authenticated user. Failures are non-fatal — log and continue (assignment is convenience, not correctness).
 - **`SearchTickets(query, limit?)`** — aggregate fetch. Returns an array of ticket payloads (same shape as `FetchTicket`) matching `query`. `query` is tracker-native (JQL for Jira, GitHub search syntax for GitHub). Used by `/sdd-status` to avoid N round-trips when reporting on multiple changes.
+- **`GetLinkedPR(id)`** — resolve the PR linked to a ticket. Returns `{ pr_number, state, merged_at }` (state is `MERGED` / `CLOSED` / `OPEN`) or `null` if no PR is linked. Used by `/sdd-status` Phase 5 to detect Class A (GitHub: closed-and-merged → archive eligible) and Class A.1 (Jira: in-review with merged PR → transition to done). GitHub recipe queries `closedByPullRequestsReferences` via GraphQL with a comment-text fallback; Jira recipe scans ticket comments for a GitHub PR URL and checks its state via `gh`.
 
 ### Related tickets
 

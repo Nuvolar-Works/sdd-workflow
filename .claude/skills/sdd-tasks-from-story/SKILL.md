@@ -34,8 +34,10 @@ This works in two modes:
 5. Detect existing state:
    - Run `FetchTicket($ARGUMENTS)`. Capture description; scan it for an `openspec/changes/<change-name>/` reference. If found, hold the change name.
    - If a change name was found, list the contents of `openspec/changes/<change-name>/`.
+   - If `openspec/changes/<change-name>/tasks.md` exists, scan its section headers for sub-task key annotations (`## N. <name> [TT-457]`). Capture (section-number → key) pairs.
    - Run a search on Jira for sub-tasks with `parent = $ARGUMENTS`. Capture their keys and current statuses.
    - Read `sdd/tasks/<change-name>.md` if it exists.
+   - Merge keys from annotations, Jira sub-task search, and the mapping file. If they disagree (annotated section without a Jira sub-task, or Jira sub-task without an annotation), note the divergence for the report.
 
 6. If existing state is detected, present:
 
@@ -43,9 +45,11 @@ This works in two modes:
    ## Existing State Detected
    Story: $ARGUMENTS — <title>
    Linked OpenSpec change: <change-name or "none">
+   Annotations in openspec/changes/<change-name>/tasks.md: <count> section headers carry keys
    Sub-tasks under this story: <count>
      - <KEY>: <status>, <comment count> comments
    Mapping: sdd/tasks/<change-name>.md (<rows>)
+   Divergence: <none | sections N,M annotated but no matching sub-task | sub-tasks without annotation | ...>
    ```
 
    Ask: "Continue (skip existing artifacts/sub-tasks; only fill gaps) / Regenerate (per-file diffs and per-sub-task diffs) / Abort?" Default Continue.
@@ -143,101 +147,31 @@ This works in two modes:
     - **Implementation hints**: relevant excerpts from `design.md`.
     - **Goal type** (used by definition-of-done.md to pick the DoD block): apply the heuristics from `definition-of-done.md` § Goal-type detection.
 
-19. Present the draft list as a numbered table. Note: each sub-task corresponds to a `tasks.md` section — adjustments at this stage usually mean editing `tasks.md` first. Allow approve / edit / reorder / drop / add. Keep `tasks.md` and the sub-task list in sync.
+19. Present the draft list as a numbered table. Note: each sub-task corresponds to a `tasks.md` section — adjustments at this stage usually mean editing `tasks.md` (and the relevant `specs/*.md` for AC changes) **first**, because Phase 4's protocol delegation re-derives payloads from those files. Allow approve / edit / reorder / drop / add, and apply edits to `tasks.md` / `specs/` before proceeding. Phase 3's draft is a preview; the canonical inputs are the change artifacts.
 
-## Phase 4: Create Sub-tasks in Jira
+## Phase 4: Create Sub-tasks via Shared Protocol
 
-20. For each finalised sub-task in dependency order, build the body. Read `sdd/templates/ticket-creation-protocol.md` for the body shape and the protocol-level mechanics; build the `description` field with:
+20. Read `sdd/templates/ticket-creation-protocol.md`. Invoke it with:
+    - `change_name = $CHANGE_NAME`
+    - `change_dir = openspec/changes/$CHANGE_NAME/`
+    - `parent_id = $ARGUMENTS`
+    - `is_subtask = true`
+    - `dry_run = DRY_RUN`
+
+    The protocol handles: per-section payload derivation (including Design Excerpt, API Integration when the goal type is Integration per `sdd/templates/definition-of-done.md` § Goal-type detection, and the goal-type-keyed Definition of Done block with inline-vs-reference rule), `EnsureLabel` calls, batched `CreateChildTickets`, `tasks.md` header annotations, mapping-file write at `sdd/tasks/$CHANGE_NAME.md`, and the summary print.
+
+    Re-run safety: the protocol's hook honours the **Continue** / **Regenerate** mode set by Phase 0.5, skipping sections whose `tasks.md` header already carries a `[KEY]` annotation or whose mapping row already exists (whichever Phase 0.5 captured).
+
+## Phase 5: Story-specific Summary Addendum
+
+21. After the protocol's summary prints, append story-specific context the protocol doesn't carry:
 
     ```
-    <Description>
-
-    ## Acceptance Criteria
-    - <criterion>
-
-    ## Implementation Hints
-    <hints>
-
-    ## Design Excerpt
-    <5-15 line excerpt from the relevant section of design.md, including the
-    section heading. Anchored quote — preserve original phrasing.>
-
-    ## API Integration                ← integration goals only
-    Endpoint: <METHOD path>
-    Request shape: <key fields and types>
-    Response shape: <key fields and types>
-    Error responses: <code → meaning>
-    Source: openspec/changes/$CHANGE_NAME/api-contract.yaml
-
-    ## Definition of Done
-    <DoD block from sdd/templates/definition-of-done.md, keyed by goal type:>
-    <  - Setup / chore: minimal block (4 items).>
-    <  - Refactor: refactor block.>
-    <  - Test: test block.>
-    <  - Integration: full integration block (inlined).>
-    <  - UI: full UI block (inlined).>
-    <  - Generic: fallback block.>
-    <Trivial goals (Setup / Refactor) get a one-line reference instead of inline:>
-    <  "See `sdd/templates/definition-of-done.md` § <type>. AC above are the primary gate.">
-
-    ## Depends on
-    <Jira keys, populated as we go, or "None">
-
-    ---
-    Spec section: openspec/changes/$CHANGE_NAME/specs/<file>.md
-    Source: openspec/changes/$CHANGE_NAME/tasks.md (section <N>)
-    ```
-
-    The **API Integration** section appears only when the goal type is integration. The **Design Excerpt** is mandatory for every sub-task. The **Definition of Done** uses the inline-vs-reference rule from `definition-of-done.md`.
-
-21. Run `CreateChildTickets(parent_id=$ARGUMENTS, payloads=[...])` from the Jira recipe. **Re-run gate**: in Continue mode, skip sub-tasks whose section header in `tasks.md` already carries a `[KEY]` annotation.
-
-    When `DRY_RUN`: print `[DRY RUN] would CreateChildTickets($ARGUMENTS, [...])` with `DRY-N` synthetic ids. Don't call Jira.
-
-22. Capture the returned Jira keys. As later sub-tasks are created, populate `Depends on` fields with real keys.
-
-23. Update `openspec/changes/$CHANGE_NAME/tasks.md` by appending each Jira key to its section header (e.g. `## 1. Clock-in panel [TT-457]`). When `DRY_RUN`, print the intended annotation.
-
-## Phase 5: Update Mapping File
-
-24. Write `sdd/tasks/$CHANGE_NAME.md`:
-
-    ```markdown
-    # Story Decomposition: $ARGUMENTS — <story title>
-
+    Parent story: $ARGUMENTS — <story title>
     Source story: <jira-url-or-key>
-    OpenSpec change: openspec/changes/$CHANGE_NAME/
-    Tracker: jira
-    Generated: <YYYY-MM-DD>
-
-    | # | Sub-task | Title | Type | Spec section | Depends On |
-    |---|----------|-------|------|--------------|------------|
-    | 1 | TT-457   | Clock-in panel | feat | clock-in-panel.md | none |
-    | 2 | TT-458   | Clock-in history panel | feat | history-panel.md | none |
-    | 3 | TT-459   | Frontend↔backend integration | feat | dashboard-data.md | TT-457, TT-458 |
     ```
 
-    When `DRY_RUN`: write locally with `DRY-N` ids; the file is git-revertable.
-
-## Phase 6: Summary
-
-25. Print a compact summary:
-
-    ```
-    [DRY RUN] Story Decomposition: $ARGUMENTS  ← prefix with [DRY RUN] when dry
-
-    Parent story: $ARGUMENTS — <title>
-    OpenSpec change: openspec/changes/$CHANGE_NAME/
-    Sub-tasks created: <count>
-
-    | # | Key | Title | Spec section |
-    |---|-----|-------|--------------|
-    | 1 | TT-457 | Clock-in panel | clock-in-panel.md |
-    | ... |
-
-    Mapping: sdd/tasks/$CHANGE_NAME.md
-    Next: Run /sdd-work TT-457 to start the first sub-task.
-    ```
+    Then the existing `Next: /sdd-work <first-key>` line from the protocol's summary already covers the hand-off.
 
 ## Rules
 

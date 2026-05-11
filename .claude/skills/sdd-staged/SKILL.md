@@ -31,7 +31,9 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/pr
 6. Detect existing staged state:
    - List `openspec/changes/<feature-slug>-*` directories. Capture stage slugs.
    - Read `sdd/tasks/<feature-slug>-stages.md` if present.
+   - For each stage directory, scan `openspec/changes/<feature-slug>-NN-<slug>/tasks.md` section headers for ticket-id annotations (`## N. <name> (#42)` or `## N. <name> [TT-457]`). Capture (stage, section-number → id) triples.
    - Read `sdd/tasks/<feature-slug>-NN-<slug>.md` per-stage mappings if present. Capture ticket ids.
+   - Merge annotation ids with mapping ids per stage. If they disagree, note the divergence for the report.
    - For each captured id, run `FetchTicket(id)` to confirm and capture state.
 
 7. If existing state is detected, present:
@@ -40,7 +42,8 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/pr
    ## Existing Staged State Detected
    Stage map: sdd/tasks/<feature-slug>-stages.md
    Stages found: <list>
-   Tickets per stage: <counts>
+   Tickets per stage (annotations / mapping): <counts>
+   Divergence: <none | stage NN: sections X,Y annotated but missing from mapping | ...>
    ```
 
    Ask: "Continue (resume staged work, only fill gaps) / Regenerate (per-file diffs) / Abort?" Default Continue.

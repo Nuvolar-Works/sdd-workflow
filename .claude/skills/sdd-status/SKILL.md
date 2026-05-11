@@ -93,12 +93,22 @@ Walk the change list one more time and identify three classes of follow-up:
 
 For each GitHub ticket in a candidate change:
 
-1. `gh issue view <id> --json state,comments` — confirm `state == CLOSED`. If not, the change is not Class A.
-2. From the comment list, find the most recent comment matching `Resolved in PR #<n>` (the standard closing comment posted by `LinkTicketToPR`). Extract `<n>`.
-3. `gh pr view <n> --json state -q .state` — must return `MERGED`. Any other value (`OPEN`, `CLOSED` without merge) disqualifies the change from Class A.
-4. If the issue is `CLOSED` but no `Resolved in PR #<n>` comment is found, or the linked PR is not `MERGED`, surface the change in a separate **"Closed without merged PR — needs manual review"** row in the sweep output and skip archiving.
+1. `gh issue view <id> --json state` — confirm `state == CLOSED`. If not, the change is not Class A.
+2. Call `GetLinkedPR(<id>)` from the GitHub recipe. This tries the GraphQL API (`closedByPullRequestsReferences`) first and falls back to the comment-text scan for `Resolved in PR #<n>`. Returns `{ pr_number, state, merged_at }` or `null`.
+3. The returned `state` must be `MERGED`. Any other value (`OPEN`, `CLOSED` without merge) disqualifies the change from Class A.
+4. If `GetLinkedPR` returns `null`, or the linked PR is not `MERGED`, surface the change in a separate **"Closed without merged PR — needs manual review"** row in the sweep output and skip archiving.
 
-**Class B — Parent stories ready to close.** For each fully-done change, identify the parent story (read the mapping's "Source story:" line, or scan a sample ticket body for a `Parent:` line). If the parent story exists and is **not yet** in `Done` status, it's a candidate.
+**Class A.1 — Jira sub-tasks ready to transition to Done.** Applies when `tracker = jira` (full Jira or hybrid). `/sdd-verify` transitions Jira sub-tasks to `In Review` at PR-creation time but does not transition to `Done` — that happens here, after the PR actually merges.
+
+For each Jira ticket in the aggregate that is **not yet** `Done` (typically `In Review`, but also any pre-`Done` status):
+
+1. Call `GetLinkedPR(<jira-key>)` from the Jira recipe. This scans the ticket's comments for a GitHub PR URL (posted by `LinkTicketToPR`) and checks the PR state via `gh`. Returns `{ pr_number, state, merged_at }` or `null`.
+2. If `state == MERGED`, the ticket is a Class A.1 candidate — its PR has merged but the Jira status hasn't caught up.
+3. If `state` is `OPEN` or `CLOSED` (not merged), or `null`, skip — the ticket is genuinely still in review (or has no PR yet).
+
+A Jira sub-task that's already `Done` counts toward Class A; a sub-task still pre-`Done` with no merged PR keeps the parent change out of Class A.
+
+**Class B — Parent stories ready to close.** For each fully-done change (counting Class A.1 candidates as effectively done), identify the parent story (read the mapping's "Source story:" line, or scan a sample ticket body for a `Parent:` line). If the parent story exists and is **not yet** in `Done` status, it's a candidate.
 
 **Class C — `tasks.md` checkboxes need regeneration.** For every change (not just fully-done ones), the sub-task statuses in the tracker may have advanced beyond what `tasks.md` reflects. Each section header carries a ticket id; the sub-task list under it should be `[x]` if the ticket is `Done`, `[ ]` otherwise.
 
@@ -112,6 +122,9 @@ For each GitHub ticket in a candidate change:
 
     Closed without merged PR — needs manual review:
     - openspec/changes/<change> (ticket #<id> closed but PR #<n> is <state>)
+
+    Jira sub-tasks ready to transition to Done (Class A.1):
+    - <jira-key> (PR #<n> merged <merged_at>; current status: In Review)
 
     Parent stories ready to close (Class B):
     - <story-key> (<X> of <X> sub-tasks done)
@@ -130,6 +143,7 @@ For each GitHub ticket in a candidate change:
 
 15. **Execution** (when not `DRY_RUN`):
     - **Class A**: for each archive candidate, run `openspec archive <change>`. Update the mapping file: rename to `sdd/tasks/<change>.archived.md` or append `**Status:** Archived <YYYY-MM-DD>` to the front matter.
+    - **Class A.1**: for each Jira sub-task whose PR is merged, run `UpdateTicketStatus(<jira-key>, "done")`. Order matters — run Class A.1 **before** Class A's archive check is re-evaluated for the same change, so a change whose only remaining "not done" sub-task is a Class A.1 candidate becomes eligible for Class A archival in the same sweep. (Practical execution: process A.1 first, then A, then B, then C.)
     - **Class B**: for each parent story, draft a Closing Summary comment aggregating the sub-task summaries (use `sdd/templates/ticket-comment-shapes.md` § Closing summary). Show the draft. On user `yes`, post via `CommentOnTicket(<story-key>, body)` then run `UpdateTicketStatus(<story-key>, "done")`.
     - **Class C**: for each change, regenerate `openspec/changes/<change>/tasks.md`:
       - Read the current `tasks.md`.
@@ -151,4 +165,4 @@ For each GitHub ticket in a candidate change:
 - Class C (tasks.md regeneration) is safe enough that it can be offered separately even when the user declines the rest of the sweep.
 - Use `SearchTickets` once per tracker (or once total) — never loop `FetchTicket` for the per-change counts. The 20-call cap from the previous version is gone.
 - If `sdd/tasks/` is empty, show only the current-branch context and last commits. The sweep has nothing to do.
-- If the active tracker is `jira`, the sweep should also call `UpdateTicketStatus(<sub-task>, "done")` for any sub-task whose PR has merged but whose status is still `In Review`. Detect this by checking whether the linked PR (per ticket comments) shows `merged` state. **Out of scope for v1** — surface as a noted-but-not-yet-implemented row when present, so users know.
+- Jira post-merge sync is handled by Class A.1 (see Phase 5). No manual transition is needed once a PR merges and the user runs `/sdd-status`.
