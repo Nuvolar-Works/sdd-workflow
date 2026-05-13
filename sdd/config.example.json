@@ -22,7 +22,8 @@
       "in_review": "In Review",
       "done": "Done"
     },
-    "source_field": null
+    "source_field": null,
+    "team_prefix": null
   },
   "mcps_enabled": []
 }
