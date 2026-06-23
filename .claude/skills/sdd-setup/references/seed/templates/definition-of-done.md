@@ -1,6 +1,6 @@
 # Definition of Done
 
-Used by `/sdd-tasks-from-story` Phase 4 when building sub-task bodies. Each goal type pulls a different DoD block so trivial sub-tasks aren't bloated with checklist items that don't apply.
+Used by `/sdd-tasks-from-story` Phase 4 when building the bodies of the goal-level work-item tickets (Jira Tasks linked to the story). Each goal type pulls a different DoD block so trivial work items aren't bloated with checklist items that don't apply.
 
 ## Goal-type detection
 
@@ -17,7 +17,7 @@ Apply heuristics in order; first match wins.
 
 ## Blocks
 
-Each block is what gets inlined into the sub-task body's `## Definition of Done` section.
+Each block is what gets inlined into the work-item body's `## Definition of Done` section.
 
 ### Setup / chore (minimal)
 
@@ -84,13 +84,13 @@ Each block is what gets inlined into the sub-task body's `## Definition of Done`
 
 ## Inlining vs reference
 
-Sub-tasks for **Setup / chore** and **Refactor** goals get a one-line DoD pointing at this template:
+Work items for **Setup / chore** and **Refactor** goals get a one-line DoD pointing at this template:
 
 ```
 ## Definition of Done
 See `sdd/templates/definition-of-done.md` § <type>. AC above are the primary gate.
 ```
 
-Sub-tasks for **UI**, **Integration**, and **Test** goals get the **full block** inlined. This is where the meat of the value is — the developer needs the goal-specific items in front of them.
+Work items for **UI**, **Integration**, and **Test** goals get the **full block** inlined. This is where the meat of the value is — the developer needs the goal-specific items in front of them.
 
 The calling skill (`/sdd-tasks-from-story` Phase 4) decides between inline and reference based on the goal type detection above.

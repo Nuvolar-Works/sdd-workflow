@@ -4,7 +4,7 @@ Spec-Driven Development workflow for a frontend team, powered by [Claude Code](h
 
 Automates the full pipeline: **PRD &rarr; specifications &rarr; tickets (GitHub or Jira) &rarr; AI-driven development &rarr; verified PRs**.
 
-Supports three tracker modes: **GitHub-only**, **Jira-only**, and **Hybrid** (Jira stories + GitHub sub-tasks). Configured once via `sdd/config.json`.
+Supports three tracker modes: **GitHub-only**, **Jira-only**, and **Hybrid** (Jira tickets + GitHub for code/PRs). Configured once via `sdd/config.json`.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ Supports three tracker modes: **GitHub-only**, **Jira-only**, and **Hybrid** (Ji
 | [Claude Code](https://claude.ai/claude-code) | `npm install -g @anthropic-ai/claude-code` | AI coding agent with skills and hooks |
 | [GitHub CLI](https://cli.github.com/) | `brew install gh` then `gh auth login` | Issue creation, PR management (GitHub mode) |
 | [OpenSpec](https://github.com/Fission-AI/OpenSpec) | `npm install -g @fission-ai/openspec@latest` | Specification generation and management |
-| Jira MCP (optional) | Configure via `/sdd-setup` | Jira story and sub-task management (Jira/Hybrid mode) |
+| Jira MCP (optional) | Configure via `/sdd-setup` | Jira story and linked-task management (Jira/Hybrid mode) |
 
 ## Quick Start
 
@@ -88,11 +88,11 @@ sdd/prds/user-auth-v1.md            (PO writes this)
 
 ### Path B: Single Jira user story (Jira/Hybrid mode)
 
-No PRD needed. The skill reads the Jira story and creates one sub-task per significant goal.
+No PRD needed. The skill reads the Jira story and creates one board-visible Task per significant goal, each linked to the story.
 
 ```
 /sdd-tasks-from-story TT-456        Reads story, generates OpenSpec change,
-        |                            creates Jira sub-tasks
+        |                            creates linked Jira Tasks
         v
 /sdd-work TT-457                    (same as Path A from here)
         v
@@ -143,7 +143,7 @@ sdd/prds/my-app-v1.md              (PO writes this)
 | `/sdd-constitution [name]` | Optional project name | Interactive setup: detects codebase signals, interviews for stack/conventions/quality gates, generates split files in `sdd/constitution/`. |
 | `/sdd-from-prd <feature>` | Feature name matching a file in `sdd/prds/` | Full pipeline: reads PRD and constitution, generates OpenSpec specs, runs a design challenge, then creates tickets. |
 | `/sdd-create-tickets <change>` | OpenSpec change name | Reads OpenSpec artifacts, creates tickets with GIVEN-WHEN-THEN acceptance criteria, updates task file with ticket IDs. |
-| `/sdd-tasks-from-story <JIRA-KEY>` | Jira story key | Reads Jira story, generates an OpenSpec change, creates one sub-task per significant goal under the story. (Jira/Hybrid mode only.) |
+| `/sdd-tasks-from-story <JIRA-KEY>` | Jira story key | Reads Jira story, generates an OpenSpec change, creates one board-visible Task per significant goal, each linked back to the story. (Jira/Hybrid mode only.) |
 | `/sdd-work <ticket-id>` | GitHub issue number or Jira key | Fetches the ticket, reads constitution and linked OpenSpec change for context, researches the codebase, presents an implementation plan for approval, creates a feature branch, implements, commits. |
 | `/sdd-staged <feature>` | Feature name matching a file in `sdd/prds/` | Staged pipeline: reads PRD and constitution, proposes stages, generates per-stage OpenSpec specs, runs a design challenge, creates cross-referenced tickets. |
 | `/sdd-verify [ticket-id]` | Optional ticket ID (auto-detected from branch) | Checks acceptance criteria, runs tests/lint/build, performs a code review, then creates a PR. |
@@ -271,7 +271,7 @@ Stage naming convention: `<feature>-NN-<slug>` (e.g. `my-app-01-setup`, `my-app-
 
 ```
 /sdd-work 42         # GitHub issue
-/sdd-work TT-456     # Jira sub-task
+/sdd-work TT-456     # Jira task (linked to a story)
 ```
 
 The agent will:
@@ -321,7 +321,7 @@ sdd-workflow/
 |       |-- sdd-staged/SKILL.md            # /sdd-staged     PRD -> stages -> specs -> tickets
 |       |-- sdd-from-prd/SKILL.md          # /sdd-from-prd   PRD -> specs -> tickets
 |       |-- sdd-create-tickets/SKILL.md    # /sdd-create-tickets  OpenSpec -> tickets
-|       |-- sdd-tasks-from-story/SKILL.md  # /sdd-tasks-from-story  Jira story -> sub-tasks
+|       |-- sdd-tasks-from-story/SKILL.md  # /sdd-tasks-from-story  Jira story -> linked Tasks
 |       |-- sdd-work/SKILL.md              # /sdd-work       Implement a ticket
 |       |-- sdd-verify/SKILL.md            # /sdd-verify     Verify + create PR
 |       |-- sdd-status/SKILL.md            # /sdd-status     Completion sweep + archive

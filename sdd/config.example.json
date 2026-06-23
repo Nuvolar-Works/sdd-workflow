@@ -16,7 +16,8 @@
       "docs": "Task",
       "refactor": "Task"
     },
-    "subtask_type": "Sub-task",
+    "child_issue_type": "Task",
+    "child_link_type": "Relates",
     "status_workflow": {
       "in_progress": "In Progress",
       "in_review": "In Review",

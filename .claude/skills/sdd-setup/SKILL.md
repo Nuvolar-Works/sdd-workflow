@@ -114,7 +114,11 @@ Use AskUserQuestion to ask which tracker:
 
 4. Discover the Jira workflow transition names for In Progress / In Review / Done. List the transitions available from the project's default issue type. Ask the user to confirm the mapping; pre-fill with the names returned by Jira.
 
-5. Update `sdd/config.json` with the Jira section, plus `vcs: "github"` and the GitHub `default_base_branch` answer (still ask for it — even Jira-tracker projects use GitHub for code).
+5. Configure the **linked-task model** keys (`/sdd-tasks-from-story` creates one board-visible Task per goal, linked to the story — never hidden Sub-tasks):
+   - `child_issue_type`: list the project's issue types (`getJiraProjectIssueTypesMetadata`) and pick a non-subtask, hierarchy-level-0 type — `Task` if present. Confirm with the user.
+   - `child_link_type`: list available link types (`getIssueLinkTypes`) and prefer a decomposition-style link in this order: `Work item split` (`split to`/`split from`) → `Relates`. Confirm with the user, defaulting to the first match found.
+
+6. Update `sdd/config.json` with the Jira section (including `child_issue_type` and `child_link_type`), plus `vcs: "github"` and the GitHub `default_base_branch` answer (still ask for it — even Jira-tracker projects use GitHub for code).
 
 ### 2.5 MCP Wiring
 

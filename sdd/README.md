@@ -58,7 +58,7 @@ All skills accept `--dry-run` (preview mode — see Reference below). Required a
 |-------|---------|
 | `/sdd-from-prd <slug>` | PRD → OpenSpec artifacts → tickets. |
 | `/sdd-staged <slug>` | Multi-stage variant of `/sdd-from-prd`. |
-| `/sdd-tasks-from-story <KEY>` | Jira story → OpenSpec change + sub-tasks per goal. |
+| `/sdd-tasks-from-story <KEY>` | Jira story → OpenSpec change + one board-visible Task per goal, linked to the story. |
 | `/sdd-create-tickets <change>` | OpenSpec tasks.md → tickets (standalone). |
 
 **Implementation**
@@ -103,7 +103,7 @@ Pointers to the design choices behind the workflow. The detail lives in skill fi
 
 ### Comments — first-class workflow citizens
 
-`/sdd-work` reads sub-task and parent-story comments on entry, then during implementation prompts opt-in (`yes` / `edit` / `skip`) to post one of five named shapes:
+`/sdd-work` reads work-item and parent-story comments on entry, then during implementation prompts opt-in (`yes` / `edit` / `skip`) to post one of five named shapes:
 
 | Shape | When |
 |-------|------|
@@ -124,8 +124,8 @@ Detail: [`templates/ticket-comment-shapes.md`](templates/ticket-comment-shapes.m
 | Team size | Behaviour |
 |-----------|-----------|
 | 1 dev | Run `/sdd-work` and `/sdd-verify`; `/sdd-status` periodically. |
-| 2-N devs, different sub-tasks | Parallel work, no shared writes during implementation. |
-| 2 devs, same sub-task | Code-level git conflicts still on you. SDD assumes one dev per ticket per branch. |
+| 2-N devs, different work items | Parallel work, no shared writes during implementation. |
+| 2 devs, same work item | Code-level git conflicts still on you. SDD assumes one dev per ticket per branch. |
 
 ### Re-run safety
 
@@ -136,7 +136,7 @@ The four ticket-creating skills detect existing state in Phase 0.5 and prompt **
 Post-merge, run `/sdd-status`. Walks active changes and offers (with prompts):
 
 - **Class A** — archive changes with all tickets done (`openspec archive`).
-- **Class B** — close parent stories with all sub-tasks done (status transition + Closing Summary comment).
+- **Class B** — close parent stories with all linked work items done (status transition + Closing Summary comment).
 - **Class C** — regenerate `tasks.md` checkboxes from ticket statuses. Always safe; offered separately.
 
 ### Dry-run

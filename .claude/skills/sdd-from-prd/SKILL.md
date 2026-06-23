@@ -130,7 +130,7 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
     - `change_name = <feature-slug>`
     - `change_dir = openspec/changes/<feature-slug>/`
     - `parent_id = none`
-    - `is_subtask = false`
+    - `is_work_item = false`
     - `dry_run = DRY_RUN`
 
     The protocol handles ticket payloads, label creation, ordered creation with id capture, `tasks.md` annotations, mapping-file write, and the summary print. Existing-id detection from Phase 0.5 informs which sections to skip in Continue mode.

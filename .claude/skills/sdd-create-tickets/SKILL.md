@@ -71,8 +71,8 @@ You are creating tracker tickets from an OpenSpec change's artifacts. The active
    Inputs to the protocol:
    - `change_name = $ARGUMENTS`
    - `change_dir = openspec/changes/$ARGUMENTS/`
-   - `parent_id = none` (these are top-level tickets, not sub-tasks)
-   - `is_subtask = false`
+   - `parent_id = none` (these are top-level tickets, not goal-level work items under a story)
+   - `is_work_item = false`
    - `dry_run = DRY_RUN`
 
 10. The protocol handles both real and dry-run paths via the convention in `sdd/trackers/protocol.md`. Don't duplicate the algorithm in this skill.

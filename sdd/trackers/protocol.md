@@ -16,13 +16,13 @@ Tracker-neutral operations used by SDD skills. Each operation has a concrete rec
 
 ### Ticket lifecycle
 
-- **`FetchTicket(id)`** — return title, body/description, labels/components, assignees, status, parent (if sub-task), and the `Source:` link if present. `id` is tracker-native (GitHub issue number or Jira issue key).
+- **`FetchTicket(id)`** — return title, body/description, labels/components, assignees, status, parent (the story this work item belongs to — for Jira, resolved from the child link or a legacy `parent` field), and the `Source:` link if present. `id` is tracker-native (GitHub issue number or Jira issue key).
 - **`CreateTicket(payload)`** — create a top-level ticket. `payload` includes title, body, labels, type, priority, parent (optional), and a `Source` field pointing at the originating OpenSpec change.
-- **`CreateChildTickets(parent_id, payloads[])`** — create one or more child tickets under a parent. For Jira this means sub-tasks linked via `parent`. For GitHub this is emulated as separate issues that reference the parent in their body (`Parent: #N`).
+- **`CreateChildTickets(parent_id, payloads[])`** — create one or more board-visible work-item tickets associated with a parent story. For Jira these are standalone issues of `jira.child_issue_type` (e.g. `Task`) each **linked** to the parent via `jira.child_link_type` — **not** Sub-tasks, which would be hidden from the board. For GitHub this is emulated as separate issues that reference the parent in their body (`Parent: #N`).
 - **`UpdateTicketStatus(id, status)`** — transition the ticket to a workflow status (`in_progress`, `in_review`, `done`). Tracker-specific mapping is in `sdd/config.json` under `jira.status_workflow` for Jira; for GitHub this is a no-op (state is implied by issue open/closed and PR linkage) but the operation may still post a status comment.
 - **`CloseTicket(id, comment)`** — close the ticket with an explanatory comment. For Jira this transitions to the `done` status. For GitHub this calls `gh issue close --comment`.
 - **`CommentOnTicket(id, body)`** — add a comment to a ticket. Used during `/sdd-work` (Decision/Blocker/Follow-up/Clarification posts, closing summary), during `/sdd-verify` (PR URL posting), and during `CloseTicket` (final comment).
-- **`FetchComments(id, limit?)`** — return an ordered list of `{author, created_at, body}` for the ticket, oldest first. Default `limit` = 30 (most recent). Pass `limit = "all"` to get the full thread (rare; use only when reasoning about long histories). Used by `/sdd-tasks-from-story` Phase 1.5 (story comments) and `/sdd-work` Phase 1.6 (sub-task + parent comments).
+- **`FetchComments(id, limit?)`** — return an ordered list of `{author, created_at, body}` for the ticket, oldest first. Default `limit` = 30 (most recent). Pass `limit = "all"` to get the full thread (rare; use only when reasoning about long histories). Used by `/sdd-tasks-from-story` Phase 1.5 (story comments) and `/sdd-work` Phase 1.6 (work-item + parent-story comments).
 - **`AssignTicket(id, user)`** — assign the ticket to a user. `user` may be `@me` for the current authenticated user. Failures are non-fatal — log and continue (assignment is convenience, not correctness).
 - **`SearchTickets(query, limit?)`** — aggregate fetch. Returns an array of ticket payloads (same shape as `FetchTicket`) matching `query`. `query` is tracker-native (JQL for Jira, GitHub search syntax for GitHub). Used by `/sdd-status` to avoid N round-trips when reporting on multiple changes.
 - **`GetLinkedPR(id)`** — resolve the PR linked to a ticket. Returns `{ pr_number, state, merged_at }` (state is `MERGED` / `CLOSED` / `OPEN`) or `null` if no PR is linked. Used by `/sdd-status` Phase 5 to detect Class A (GitHub: closed-and-merged → archive eligible) and Class A.1 (Jira: in-review with merged PR → transition to done). GitHub recipe queries `closedByPullRequestsReferences` via GraphQL with a comment-text fallback; Jira recipe scans ticket comments for a GitHub PR URL and checks its state via `gh`.
@@ -35,7 +35,7 @@ Tracker-neutral operations used by SDD skills. Each operation has a concrete rec
   - `"relates_to"` — loose relationship
   - `"follows_up"` — a synthesised type for "future work discovered during this implementation". Jira maps it to a "Relates" link plus a labelled comment; GitHub emulates via `Follow-up of #N` body footer.
 
-  Used by `/sdd-work` Phase 3.5 to track blockers and follow-up work as standalone tickets so they don't fall off the radar after the current sub-task ships.
+  Used by `/sdd-work` Phase 3.5 to track blockers and follow-up work as standalone tickets so they don't fall off the radar after the current work item ships.
 
 ### Labels / metadata
 

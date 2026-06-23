@@ -2,13 +2,13 @@
 
 Used by `/sdd-tasks-from-story` Phase 1.6 (and, in future, `/sdd-from-prd` and `/sdd-staged`) to audit the existing codebase for prior implementation of story AC items **before** generating specs. The audit drives whether each spec scenario lands as `ADDED` (genuinely new), `ADDED + remove existing` (partial — replace what's there), `MODIFIED` (locking in current behaviour), or omitted entirely.
 
-Without this audit, a mature codebase produces specs that overstate scope: every AC becomes an `ADDED` requirement, every goal becomes a new sub-task, and `/sdd-work` re-discovers existing implementation mid-build.
+Without this audit, a mature codebase produces specs that overstate scope: every AC becomes an `ADDED` requirement, every goal becomes a new Task, and `/sdd-work` re-discovers existing implementation mid-build.
 
 ## Inputs
 
 - **AC list** — extracted from the story description (and Phase 1.5 comment highlights, if any). One row per AC item.
 - **Folder structure** — `sdd/constitution/folder-structure.md` is the primary source of truth for *where* relevant code lives.
-- **Cross-team context** (optional) — descriptions of other-team sub-tasks under the same parent (`jira.team_prefix` is used to identify which sub-tasks belong to *other* teams; their titles/descriptions are pulled for context only, never as scope).
+- **Cross-team context** (optional) — descriptions of other-team work items under the same parent (`jira.team_prefix` is used to identify which work items belong to *other* teams; their titles/descriptions are pulled for context only, never as scope).
 
 ## Process
 
@@ -30,7 +30,7 @@ Without this audit, a mature codebase produces specs that overstate scope: every
    - **`partial`** — relevant code exists but doesn't fully satisfy the AC; AC becomes an `ADDED` spec scenario whose task list includes removing/changing the existing piece; the existing file paths are explicit inputs to `design.md`.
    - **`done`** — code already satisfies the AC; AC becomes a `MODIFIED` requirement (to lock in the behaviour) or is **omitted** if the AC is a constitution-level invariant; no new task.
 
-4. **Cross-team context.** For each other-team sub-task under the parent story:
+4. **Cross-team context.** For each other-team work item under the parent story:
    - Extract any API endpoint, contract, dependency, or environment-variable hints from its title and description.
    - These flow into `design.md`'s **API Integration** subsection, *not* into spec scenarios for this repo.
 
@@ -49,7 +49,7 @@ Present a single matrix to the user:
 | 4 | Domain allow-list | new | (no current implementation) | Implement in signIn callback. |
 | 5 | Role-aware post-sign-in redirect | partial | src/middleware.ts — redirects authed users to /dashboard but is not role-aware | Extract to /post-signin server component or extend middleware. |
 
-### Cross-team context (other-team sub-tasks under <STORY-KEY>)
+### Cross-team context (other-team work items under <STORY-KEY>)
 
 - **<BE-KEY> "BE - SSO callback endpoint"** (excerpt from description): backend will expose `POST /api/auth/sso-callback` accepting Google ID token; returns JWT with `role` claim.
 - **<BE-KEY> "BE - User provisioning"** (excerpt): backend auto-provisions on first sign-in for allow-listed domains; no FE involvement.
@@ -68,5 +68,5 @@ Accept inline corrections (e.g. *"row 2 is actually partial — there's a stale 
 - **Use folder-structure.md as the primary lookup.** Falling back to a wide `grep` is the last resort and must be surfaced in the row's Notes column.
 - **Audit reads only.** Never modify existing code during the audit.
 - **Quantify caveats.** If a file is too large to read fully, say so in Notes — do not claim coverage you don't have.
-- **Cross-team rows are context, not scope.** Never let other-team sub-task content become an `ADDED` spec scenario in this repo.
+- **Cross-team rows are context, not scope.** Never let other-team work-item content become an `ADDED` spec scenario in this repo.
 - **Don't conflate "constitution invariant" with "implemented".** Some AC items restate the constitution (e.g. "TypeScript strict mode"); those are `done` by virtue of the constitution and are usually omitted from the spec entirely.

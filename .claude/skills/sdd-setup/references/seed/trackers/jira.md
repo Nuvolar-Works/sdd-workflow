@@ -10,7 +10,8 @@ Before any operation, read `sdd/config.json` and extract:
 - `jira.site` (e.g. `your-org.atlassian.net`)
 - `jira.project_key` (e.g. `TT`)
 - `jira.issue_type_map` (maps SDD type → Jira issue type name)
-- `jira.subtask_type` (the Sub-task type name for child creation)
+- `jira.child_issue_type` (the issue type for goal-level work items created under a story — a board-visible type such as `Task`, **not** a Sub-task type)
+- `jira.child_link_type` (the issue-link type used to attach each work item to its parent story — e.g. `Work item split` where available, else `Relates`)
 - `jira.status_workflow` (maps SDD status → Jira transition name)
 - `jira.source_field` (custom field id for the OpenSpec source link, or `null` to fall back to a comment)
 
@@ -29,7 +30,10 @@ Use the Atlassian Rovo `get_issue` tool (or equivalent) with the issue key. Map 
 - `labels` → `fields.labels`
 - `assignees` → `[fields.assignee.displayName]` if present
 - `status` → `fields.status.name`
-- `parent` → `fields.parent.key` if it exists (only set on sub-tasks)
+- `parent` → resolve the story this ticket belongs to, in order:
+  1. `fields.parent.key` if present (legacy Jira Sub-tasks created before the linked-task model, or items still parented under an Epic).
+  2. Otherwise scan `fields.issuelinks` for a link whose `type.name` equals `jira.child_link_type` and return the linked counterpart's key — i.e. whichever of `inwardIssue` / `outwardIssue` is populated on that entry (Jira shows the *other* end relative to this issue, so the populated side is the parent story). For `Work item split` there is exactly one such link per work item (to its story). If several links of that type exist (more likely with the non-directional `Relates` fallback), prefer the counterpart whose issue type matches the story type from `jira.issue_type_map["feat"]`.
+  3. If neither resolves, `parent` is unset.
 - `Source` → `fields[<source_field>]` if `jira.source_field` is configured; otherwise scan `fields.description` for an `openspec/changes/<name>/` substring.
 
 ## CreateTicket(payload)
@@ -52,13 +56,25 @@ Capture the returned issue key.
 
 ## CreateChildTickets(parent_id, payloads[])
 
-For each payload, call `create_issue` with:
-- `project` → `jira.project_key`
-- `issuetype` → `jira.subtask_type`
-- `parent` → `{ key: parent_id }`
-- `summary`, `description`, `labels` — as in `CreateTicket`.
+Creates one board-visible **work-item ticket** per payload and links each back to the parent story. We do **not** use Jira Sub-tasks here: Sub-tasks (hierarchy level −1) don't appear on the board, which hides the goal-level work. Instead each work item is a standalone issue of `jira.child_issue_type` (e.g. `Task`, hierarchy level 0 — same level as a Story, so it cannot be a true child via `parent`) that is **linked** to the story.
 
-Sub-tasks inherit visibility from the parent and appear under it in Jira's UI.
+For each payload:
+
+1. **Create the work item.** Call `create_issue` with:
+   - `project` → `jira.project_key`
+   - `issuetype` → `jira.child_issue_type`
+   - `summary`, `description`, `labels` — as in `CreateTicket`.
+   - Do **not** set `parent` (the work item is not a sub-task or epic child; the story is at the same hierarchy level).
+   Capture the returned key (`<child_key>`).
+
+2. **Link it to the story.** Call `link_issue` (`createIssueLink`) with:
+   - `type` → `jira.child_link_type`
+   - `inwardIssue` → `parent_id` (the story)
+   - `outwardIssue` → `<child_key>` (the new work item)
+
+   This MCP's `createIssueLink` reads as **`inwardIssue <outward-phrase> outwardIssue`** (per its own example, "A is blocked by B" → `inwardIssue: B, outwardIssue: A`, i.e. B blocks A). For the default `Work item split` type (`outward: "split to"`, `inward: "split from"`) this yields **story `split to` work item** / **work item `split from` story** — the intended decomposition direction. If the configured link type is non-directional (e.g. `Relates`), direction is immaterial. Verify the rendered direction on first use and swap inward/outward if the instance inverts it.
+
+Return the list of `<child_key>` values. Each work item now shows on the board and carries a visible link to its parent story.
 
 ## UpdateTicketStatus(id, status)
 
@@ -122,8 +138,9 @@ Use the Atlassian Rovo MCP `search_issues` tool (or `jql_search` depending on MC
 
 `<query>` is JQL. Examples:
 - `project = "TT" AND labels = "stage-05-time-tracking"` — all tickets in a stage.
-- `project = "TT" AND parent = "TT-456"` — sub-tasks of a parent story.
-- `project = "TT" AND status != Done AND issuetype != Sub-task` — open top-level work.
+- `project = "TT" AND issue in linkedIssues("TT-456", "split to")` — the work items split from a parent story (the linked-task model). Use the **outward** phrase of `jira.child_link_type` (for `Work item split` that is `split to`; for `Relates` use `relates to`).
+- `project = "TT" AND (parent = "TT-456" OR issue in linkedIssues("TT-456", "split to"))` — covers both legacy Sub-tasks (`parent`) and current linked work items in one query. Use this for re-run detection so old and new artifacts are both found.
+- `project = "TT" AND status != Done AND issuetype != Sub-task` — open top-level work (excludes any legacy sub-tasks).
 
 Map each returned issue to the protocol shape exactly as `FetchTicket` does (see above). Cap defaults to 100. Pagination: if the result count equals the cap, the skill should re-issue with a higher cap or follow-up calls; the recipe doesn't paginate automatically.
 
@@ -141,11 +158,11 @@ After the PR is created in GitHub:
 1. `CommentOnTicket(<jira-key>, "PR opened: <pr-url>")`.
 2. `UpdateTicketStatus(<jira-key>, "in_review")`.
 
-Once the PR merges, `/sdd-status` Phase 5 (Class A.1) detects the merge and calls `UpdateTicketStatus(<jira-key>, "done")` automatically. The `/sdd-verify` skill does not transition Jira sub-tasks to `done` — only to `in_review` — because PR merge happens later.
+Once the PR merges, `/sdd-status` Phase 5 (Class A.1) detects the merge and calls `UpdateTicketStatus(<jira-key>, "done")` automatically. The `/sdd-verify` skill does not transition Jira work-item tickets to `done` — only to `in_review` — because PR merge happens later.
 
 ## GetLinkedPR(id)
 
-Resolve the GitHub PR linked to a Jira ticket. Used by `/sdd-status` Phase 5 Class A.1 to detect that a sub-task in `in_review` has its PR merged and is ready to transition to `done`.
+Resolve the GitHub PR linked to a Jira ticket. Used by `/sdd-status` Phase 5 Class A.1 to detect that a work-item ticket in `in_review` has its PR merged and is ready to transition to `done`.
 
 1. `FetchComments(id)`.
 2. Scan comments newest-first for either:

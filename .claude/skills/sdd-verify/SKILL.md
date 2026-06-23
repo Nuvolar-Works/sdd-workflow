@@ -49,7 +49,7 @@ Mirrors `/sdd-work`'s spec-loading so the Design Alignment check in Phase 2 has 
 9. Open `openspec/changes/<CHANGE_NAME>/tasks.md`. Find the section header containing the ticket id (annotated as `(#N)` for GitHub or `[KEY]` for Jira). Note the section title.
 
 10. **Locate the relevant spec file**, in order of preference:
-    a. Read the `Spec section:` footer in the ticket body — sub-task tickets created by `/sdd-tasks-from-story` carry an explicit pointer. When present, use it without prompting.
+    a. Read the `Spec section:` footer in the ticket body — work-item tickets created by `/sdd-tasks-from-story` carry an explicit pointer. When present, use it without prompting.
     b. Heuristic fallback when no footer: glob `openspec/changes/<CHANGE_NAME>/specs/*.md` and score each by keyword overlap with the section title.
        - **Single match**: use it.
        - **Clear winner** (top score ≥ 2× the runner-up): use it; the verification report's Design Alignment row notes "spec inferred from <file>".
@@ -153,7 +153,7 @@ Mirrors `/sdd-work`'s spec-loading so the Design Alignment check in Phase 2 has 
     PR opened: <pr-url>
     Once the PR merges, run /sdd-status to detect completion. /sdd-status
     will offer to archive the OpenSpec change and close the parent story
-    when all sub-tasks are done.
+    when all linked work items are done.
     ```
 
     For `DRY_RUN`, frame as `[DRY RUN] PR would be opened. Re-run without --dry-run to execute.`

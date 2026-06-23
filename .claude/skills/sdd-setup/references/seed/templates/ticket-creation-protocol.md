@@ -9,8 +9,8 @@ Skills load this file in their Phase 4 (or equivalent ticket-creation phase). Re
 The calling skill provides:
 - `change_name` — slug of the OpenSpec change (e.g. `tt-456-dashboard-page`).
 - `change_dir` — `openspec/changes/<change_name>/`.
-- `parent_id` (optional) — parent story key when creating sub-tasks (`/sdd-tasks-from-story`).
-- `is_subtask` — boolean. `true` when calling `CreateChildTickets` instead of `CreateTicket`.
+- `parent_id` (optional) — parent story key when creating linked work-item tickets (`/sdd-tasks-from-story`).
+- `is_work_item` — boolean. `true` when calling `CreateChildTickets` (goal-level work items linked to a parent story) instead of `CreateTicket`. (Formerly `is_subtask`; renamed because Jira now creates linked Tasks, not Sub-tasks.)
 - `dry_run` — boolean. When true, skip writes and emit `[DRY RUN]` lines per the protocol convention.
 
 ## Step 1: Read change artifacts
@@ -41,9 +41,9 @@ For each section, derive:
 | **Labels** | Kebab-case section name plus the type. Plus any stage label (`stage-NN-<slug>`) if the calling skill is staged. Plus `follow-up` if created by `CreateRelatedTicket`. |
 | **Acceptance Criteria** | Match GIVEN-WHEN-THEN scenarios from the relevant `specs/*.md` file (heuristic: section-title keyword match). If no scenario matches, derive 2-4 criteria from the section's subtasks. |
 | **Implementation Hints** | Relevant excerpts from `design.md` for this section's scope. |
-| **Design Excerpt** | (sub-task only — `is_subtask=true`) 5-15 line quote from the relevant section of `design.md` including its heading. |
-| **API Integration** | (sub-task only) Include the section iff goal type is **Integration** per `sdd/templates/definition-of-done.md` § Goal-type detection. Body: endpoint signature + request/response shape from `api-contract.yaml`. |
-| **Definition of Done** | (sub-task only) Determine goal type via `sdd/templates/definition-of-done.md` § Goal-type detection, then pull the matching block per § Blocks. Apply the inline-vs-reference rule from § Inlining vs reference (Setup / Refactor get a one-line reference; UI / Integration / Test get the full inlined block). |
+| **Design Excerpt** | (work-item only — `is_work_item=true`) 5-15 line quote from the relevant section of `design.md` including its heading. |
+| **API Integration** | (work-item only) Include the section iff goal type is **Integration** per `sdd/templates/definition-of-done.md` § Goal-type detection. Body: endpoint signature + request/response shape from `api-contract.yaml`. |
+| **Definition of Done** | (work-item only) Determine goal type via `sdd/templates/definition-of-done.md` § Goal-type detection, then pull the matching block per § Blocks. Apply the inline-vs-reference rule from § Inlining vs reference (Setup / Refactor get a one-line reference; UI / Integration / Test get the full inlined block). |
 | **Dependencies** | Tickets created in earlier sections this run. Use real ids captured from previous `CreateTicket` returns. For a fresh first section, `None`. |
 
 ## Step 4: Build the ticket body
@@ -62,24 +62,24 @@ For each section, derive:
 ## Implementation Hints
 <Relevant excerpts from design.md>
 
-## Design Excerpt                        ← sub-task only
+## Design Excerpt                        ← work-item only
 <5-15 line excerpt from the relevant design.md section>
 
-## API Integration                       ← integration sub-task only
+## API Integration                       ← integration work-item only
 Endpoint: <METHOD path>
 Request shape: <key fields>
 Response shape: <key fields>
 Error responses: <code → meaning>
 Source: openspec/changes/<change>/api-contract.yaml
 
-## Definition of Done                    ← sub-task only
+## Definition of Done                    ← work-item only
 <DoD block from definition-of-done.md>
 
 ## Dependencies
 <Comma-separated prior ticket ids, or "None">
 
 ---
-Spec section: openspec/changes/<change>/specs/<file>.md   ← sub-task only
+Spec section: openspec/changes/<change>/specs/<file>.md   ← work-item only
 Source: openspec/changes/<change>/tasks.md (section <N>)
 ```
 
@@ -97,14 +97,14 @@ For each section, in section-order:
 if dry_run:
     print [DRY RUN] would <op>(payload) and assign synthetic id DRY-<n>
 else:
-    if is_subtask:
+    if is_work_item:
         id = CreateChildTickets(parent_id, [payload])[0]
     else:
         id = CreateTicket(payload)
     capture id for downstream sections
 ```
 
-For `/sdd-tasks-from-story` (`is_subtask=true`), use a single batched `CreateChildTickets(parent_id, payloads)` call instead of N individual creates when the recipe supports it. Falls back to per-payload if needed.
+For `/sdd-tasks-from-story` (`is_work_item=true`), use a single batched `CreateChildTickets(parent_id, payloads)` call instead of N individual creates when the recipe supports it. Falls back to per-payload if needed. (For Jira, `CreateChildTickets` creates a board-visible Task per payload and links it to the parent story — see `sdd/trackers/jira.md`.)
 
 ## Step 7: Update OpenSpec tasks.md with ticket annotations
 
@@ -134,7 +134,7 @@ Generated: <YYYY-MM-DD>
 | 1       | <id>   | ...   | feat | high     | none       | <file.md>    |
 ```
 
-The `Spec Section` column applies to sub-tasks (those carry `Spec section:` footers); for top-level tickets the column may show the OpenSpec change's primary spec or be empty. The `Tracker` line at the top reflects the active `sdd/config.json` `tracker` value.
+The `Spec Section` column applies to linked work-item tickets (those carry `Spec section:` footers); for top-level tickets the column may show the OpenSpec change's primary spec or be empty. The `Tracker` line at the top reflects the active `sdd/config.json` `tracker` value.
 
 When `dry_run`: write the mapping locally (revertable via git). The synthetic `DRY-N` ids appear in the mapping so the user can preview the shape.
 

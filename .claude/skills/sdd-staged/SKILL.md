@@ -128,7 +128,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/pr
     - `change_name = <feature-slug>-NN-<stage-slug>`
     - `change_dir = openspec/changes/<change_name>/`
     - `parent_id = none` (top-level tickets)
-    - `is_subtask = false`
+    - `is_work_item = false`
     - `dry_run = DRY_RUN`
     - **Stage label**: include `stage-NN-<slug>` in every payload's labels (the protocol's label step calls `EnsureLabel("stage-NN-<slug>")` automatically when it sees a new label).
     - **Cross-stage dependencies**: the **first ticket of each stage after 01** depends on the **last ticket of the previous stage** (stage gate). Add specific cross-references when a section's hints mention a prior-stage output.
@@ -169,7 +169,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/pr
 
     ```
     Next: Run /sdd-work <ticket-id> starting from stage 01.
-    Work through stages in order. After all sub-tasks of a change are done,
+    Work through stages in order. After all tickets of a change are done,
     /sdd-status will offer to archive that stage's OpenSpec change.
     ```
 

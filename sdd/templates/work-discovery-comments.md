@@ -56,11 +56,11 @@ If `yes`:
      - For a Blocker: `"Replace mock with real /api/v1/dashboard integration"`
      - For a Follow-up: `"Migrate <component> to <new-pattern> when <condition>"`
    - **Description**: 3-line block — *what* needs to happen, *where* (file:line of the placeholder), *why* (one sentence pulled from the comment).
-   - **Labels**: `follow-up` plus the area labels of the current sub-task.
+   - **Labels**: `follow-up` plus the area labels of the current work item.
    - **Type**: `feat` for a Blocker (it's deferred work); `chore` for a pure cleanup Follow-up.
 
 2. Determine the related id:
-   - If the current sub-task has a `parent` (Jira sub-task or GitHub `Parent: #N` body line), use the **parent story** as `related_id`. The story is the persistent unit.
+   - If the current work item has a `parent` (for Jira, the story it was split from — resolved by `FetchTicket` from the child link; for GitHub, the `Parent: #N` body line), use the **parent story** as `related_id`. The story is the persistent unit.
    - Otherwise, use `$ARGUMENTS` as `related_id`.
 
 3. Determine the link type:

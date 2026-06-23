@@ -13,7 +13,7 @@ The full decision tree (greenfield vs increment vs Jira story vs trivial) lives 
 
 - **Greenfield from a PRD** → write `sdd/prds/<feature>-v1.md` using `sdd/prd-template.md`, then `/sdd-from-prd <feature>-v1` (or `/sdd-staged <feature>` for multi-stage greenfield).
 - **v2+ increment** → write `sdd/prds/<feature>-v2-<scope>.md` using `sdd/prd-template-mini.md`, then `/sdd-from-prd <feature>-v2-<scope>`.
-- **Single Jira user story** → `/sdd-tasks-from-story <JIRA-KEY>`. No PRD needed; the skill generates an OpenSpec change for the story and creates one Jira sub-task per significant goal under it.
+- **Single Jira user story** → `/sdd-tasks-from-story <JIRA-KEY>`. No PRD needed; the skill generates an OpenSpec change for the story and creates one board-visible Jira Task per significant goal, each linked back to the story (Jira Sub-tasks are avoided because they don't show on the board).
 - **Trivial fix or chore** → `/opsx:propose "description"` then `/sdd-create-tickets <change>`.
 
 For implementation: `/sdd-work <ticket-id>` → code → `/sdd-verify` → review + PR → after merge, `/sdd-status` to archive + close parent. `/sdd-work` self-detects whether to run Fresh, Resume in-flight work, or Fix-from-PR review feedback. `/sdd-doctor` for a pre-flight check.
@@ -39,8 +39,8 @@ Every skill that writes external state accepts `--dry-run` for previewing withou
 - Follow existing patterns in the codebase.
 - When implementing a ticket, read the full ticket body first — the SDD skills do this automatically.
 - `/sdd-work` lazy-loads the relevant OpenSpec spec and the relevant section of `design.md` for the ticket — it does NOT read the entire change. This keeps token costs down.
-- `/sdd-work` also reads ticket comments (sub-task + parent story) on entry and offers to post Decision / Blocker / Follow-up / Clarification comments back during work. Comment shapes live in [sdd/templates/ticket-comment-shapes.md](sdd/templates/ticket-comment-shapes.md). Posting is always opt-in — Claude prompts before each comment.
-- `/sdd-work` does **not** update `openspec/changes/<change>/tasks.md` checkbox state during work. That file is a derived view; `/sdd-status`'s Completion Sweep regenerates it from authoritative ticket statuses. This makes parallel work on different sub-tasks of the same change conflict-free.
+- `/sdd-work` also reads ticket comments (work item + parent story) on entry and offers to post Decision / Blocker / Follow-up / Clarification comments back during work. Comment shapes live in [sdd/templates/ticket-comment-shapes.md](sdd/templates/ticket-comment-shapes.md). Posting is always opt-in — Claude prompts before each comment.
+- `/sdd-work` does **not** update `openspec/changes/<change>/tasks.md` checkbox state during work. That file is a derived view; `/sdd-status`'s Completion Sweep regenerates it from authoritative ticket statuses. This makes parallel work on different work items of the same change conflict-free.
 - Check for related files before creating new ones.
 
 ## File Locations
