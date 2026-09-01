@@ -300,7 +300,7 @@ The agent checks acceptance criteria, runs CI, performs the code review, then â€
 /sdd-status
 ```
 
-After all tickets for a change are merged, run `/sdd-status` to regenerate `tasks.md` from authoritative ticket statuses, archive the OpenSpec change, and close the parent Jira story (Jira/Hybrid mode).
+After all tickets for a change are merged, run `/sdd-status` to reconcile `tasks.md` against authoritative ticket statuses (`/sdd-verify` already checked off each work item's own section inside its PR), archive the OpenSpec change, and close the parent Jira story (Jira/Hybrid mode).
 
 ## Project Structure
 

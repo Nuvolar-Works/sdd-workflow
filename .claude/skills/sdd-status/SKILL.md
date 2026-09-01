@@ -110,7 +110,7 @@ A Jira work-item ticket that's already `Done` counts toward Class A; one still p
 
 **Class B — Parent stories ready to close.** For each fully-done change (counting Class A.1 candidates as effectively done), identify the parent story (read the mapping's "Source story:" line, or scan a sample ticket body for a `Parent:` line). If the parent story exists and is **not yet** in `Done` status, it's a candidate.
 
-**Class C — `tasks.md` checkboxes need regeneration.** For every change (not just fully-done ones), the work-item statuses in the tracker may have advanced beyond what `tasks.md` reflects. Each section header carries a ticket id; the checklist under it should be `[x]` if the ticket is `Done`, `[ ]` otherwise.
+**Class C — `tasks.md` checkbox reconciliation (backstop).** As of the Phase 2.8 step in `/sdd-verify`, the primary checkbox flip happens on the feature branch and ships inside each work item's PR. Class C is now a **reconciliation backstop**: it catches drift where a ticket is `Done` but its section is still `[ ]` — e.g. work merged before this step existed, a hotfix that skipped `/sdd-verify`, or a ticket transitioned manually. For every change (not just fully-done ones), each section header carries a ticket id; the checklist under it should be `[x]` if the ticket is `Done`, `[ ]` otherwise. Usually a no-op once `/sdd-verify` has run for each merged work item.
 
 13. Present the sweep:
 

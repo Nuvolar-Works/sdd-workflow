@@ -119,7 +119,7 @@ Detail: [`templates/ticket-comment-shapes.md`](templates/ticket-comment-shapes.m
 
 ### Concurrency — N developers per change
 
-`tasks.md` is a derived view, not a control surface. Ticket status is the single source of truth; `/sdd-work` does not write checkbox state during implementation. `/sdd-status`'s Completion Sweep regenerates `tasks.md` from ticket statuses (single writer, atomic — no merge conflicts possible).
+`tasks.md` is a derived view, not a control surface — ticket status is the single source of truth. `/sdd-work` does not write checkbox state during implementation (granular per-edit writes caused conflicts). Instead, `/sdd-verify` checks off **only the current ticket's own section** just before opening the PR, so the flip ships inside the feature PR rather than as a separate post-merge commit. Because each work item touches only its own section, parallel work on the same change stays conflict-free. `/sdd-status`'s Completion Sweep (Class C) then reconciles any residual drift from ticket statuses (idempotent — usually a no-op).
 
 | Team size | Behaviour |
 |-----------|-----------|
@@ -137,7 +137,7 @@ Post-merge, run `/sdd-status`. Walks active changes and offers (with prompts):
 
 - **Class A** — archive changes with all tickets done (`openspec archive`).
 - **Class B** — close parent stories with all linked work items done (status transition + Closing Summary comment).
-- **Class C** — regenerate `tasks.md` checkboxes from ticket statuses. Always safe; offered separately.
+- **Class C** — reconcile `tasks.md` checkboxes against ticket statuses (backstop for drift; `/sdd-verify` does the primary per-section flip). Always safe; offered separately.
 
 ### Dry-run
 

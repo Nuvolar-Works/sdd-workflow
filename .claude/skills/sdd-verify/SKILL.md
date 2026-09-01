@@ -125,6 +125,23 @@ Mirrors `/sdd-work`'s spec-loading so the Design Alignment check in Phase 2 has 
 
 22. If everything passes (or the user chooses to proceed), ask: "Ready to push and create a PR?"
 
+## Phase 2.8: Check off the ticket's tasks.md section (only if linked)
+
+Run this phase **only after the user confirms "yes" at step 22** (proceeding to push + PR), and skip it entirely if `CHANGE_NAME = none`. If the user declines, do not touch `tasks.md`. This marks the **current work item's own section** complete **on the feature branch**, so the checkbox state ships inside the feature PR instead of arriving as a separate post-merge commit. Scope is strictly the current ticket's section — never a full-file regeneration — so parallel work items of the same change edit disjoint lines and merge cleanly. `/sdd-status` Class C remains the reconciliation backstop that catches any drift.
+
+22a. Open `openspec/changes/<CHANGE_NAME>/tasks.md` and locate the section header carrying `<ticket-id>` (`## N. <title> [<KEY>]` for Jira or `(#N)` for GitHub) — the same section identified in Phase 1.5.
+
+22b. Within that section only (from its header up to the next `## ` header), flip every `- [ ]` to `- [x]`. Leave all other sections untouched. If the section is already fully `[x]`, this is a no-op — skip the commit.
+
+22c. Commit on the feature branch (only if something changed):
+    ```bash
+    git add openspec/changes/<CHANGE_NAME>/tasks.md
+    git commit -m "docs(tasks): check off section <N> <title> <ticket-ref>"
+    ```
+    `<ticket-ref>` follows the repo convention (`[<JIRA-KEY>]` or `(#<n>)`). When `DRY_RUN`, print `[DRY RUN] would check off <ticket-id>'s section in tasks.md` and skip the write + commit.
+
+This commit is pushed in Phase 3, so the checkbox update is part of the feature PR — no separate tasks-only PR is needed.
+
 ## Phase 3: Create PR
 
 23. Run `PushBranch(<current-branch>)` from the active VCS recipe. When `DRY_RUN`, print `[DRY RUN] would PushBranch(<branch>)`.
@@ -167,4 +184,4 @@ Mirrors `/sdd-work`'s spec-loading so the Design Alignment check in Phase 2 has 
 - Feature PRs target the configured base branch (`develop` by default). Only ask the user to confirm a different base if the configured base does not exist.
 - Use abstract operation names from `sdd/trackers/protocol.md`; never embed `gh` or MCP calls inline.
 - Do NOT merge the PR. That is a human decision.
-- The post-merge cleanup (archive OpenSpec change, close parent story, regenerate tasks.md checkboxes) lives in `/sdd-status`'s Completion Sweep — point the user there in the hand-off message.
+- The current ticket's `tasks.md` checkboxes are flipped here (Phase 2.8) so they ship in the feature PR. The remaining post-merge cleanup (archive OpenSpec change, close parent story, and a reconciliation pass over tasks.md checkboxes) lives in `/sdd-status`'s Completion Sweep — point the user there in the hand-off message.
