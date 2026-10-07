@@ -10,7 +10,7 @@ Skills load this file lazily — only when a comment is about to be drafted, not
 |-------|---------|-----------|
 | Decision | Implementation choice that diverges from `design.md` or the ticket body's stated approach | `/sdd-work` Phase 3.5 |
 | Blocker | External dependency surfaced during work (API not ready, missing infra, awaiting another team) | `/sdd-work` Phase 3.5 |
-| Follow-up | Known future work created as a placeholder during this implementation (mock to be replaced, TODO with a real owner) | `/sdd-work` Phase 3.5 |
+| Follow-up | Known future work created as a placeholder during this implementation (stub or test double to be replaced, TODO with a real owner) | `/sdd-work` Phase 3.5 |
 | Clarification | Confirmation from another team / source that resolves an ambiguity in the ticket | `/sdd-work` Phase 3.5 |
 | Closing summary | End-of-implementation overview before handing off to `/sdd-verify` | `/sdd-work` Phase 4.5 |
 
@@ -22,7 +22,7 @@ Skills load this file lazily — only when a comment is about to be drafted, not
 **Chose:** <what was implemented>
 **Spec/design suggested:** <what design.md or the ticket body said to do>
 **Why diverged:** <reason — be specific; "the suggested primitive doesn't support X")
-**Where:** <file:line or component name>
+**Where:** <file:line or file/module name>
 ```
 
 ## Blocker
@@ -32,7 +32,7 @@ Skills load this file lazily — only when a comment is about to be drafted, not
 
 **What's blocked:** <feature / behaviour / criterion>
 **Owner:** <team / system / person — who owns the resolution>
-**Workaround in this implementation:** <e.g. "mocked the response", "hardcoded the flag",
+**Workaround in this implementation:** <e.g. "stubbed the response", "hardcoded the flag",
   "left as TODO behind a feature gate">
 **Impact when resolved:** <what changes when the blocker clears — file paths and what to
   flip on>
@@ -46,8 +46,9 @@ If the workaround warrants a tracked future fix, immediately follow this comment
 ## Follow-up
 
 **Future work:** <one-line description>
-**Placeholder location:** <file:line — where the stub / mock / TODO lives in the code>
-**Trigger to revisit:** <e.g. "when /api/v2/foo ships", "after the auth refactor lands">
+**Placeholder location:** <file:line — where the stub / test double / TODO lives in the code>
+**Trigger to revisit:** <e.g. "when the v2 orders endpoint ships", "when the ERP callout is available
+  in UAT", "after the auth refactor lands">
 **Tracked as:** <ticket key/number — populated after CreateRelatedTicket runs, or "untracked">
 ```
 
@@ -60,7 +61,7 @@ If the user opts to create a follow-up ticket, the new ticket id is posted as a 
 
 **Question:** <the ambiguity that was open>
 **Answer:** <what was resolved>
-**Source:** <who/what — "@backend-team in #channel on YYYY-MM-DD",
+**Source:** <who/what — "@<other-team> in #channel on YYYY-MM-DD",
   "Slack thread <link>", "follow-up call with PO">
 **How it shaped this implementation:** <what code differs because of the answer>
 ```

@@ -9,16 +9,14 @@ Without this audit, a mature codebase produces specs that overstate scope: every
 - **AC list** — extracted from the story description (and Phase 1.5 comment highlights, if any). One row per AC item.
 - **Folder structure** — `sdd/constitution/folder-structure.md` is the primary source of truth for *where* relevant code lives.
 - **Interface contract** (optional) — resolved per `sdd/README.md` § Interface contracts. Read it before classifying any AC item that names an operation or field: present in the contract means supported, even if prose omits it.
-- **Cross-team context** (optional) — descriptions of other-team work items under the same parent (`jira.team_prefix` is used to identify which work items belong to *other* teams; their titles/descriptions are pulled for context only, never as scope).
+- **Cross-team context** (optional) — descriptions of work items owned by other teams/repos (any layer) under the same parent (`jira.team_prefix` is used to identify which work items belong to *other* teams; their titles/descriptions are pulled for context only, never as scope).
 
 ## Process
 
-1. **Infer likely files for each AC item.** Use the constitution's folder structure plus the AC's domain language. Examples:
-   - "sign-in screen" → `src/app/(auth)/login/` (per folder-structure.md)
-   - "session lifetime" → `src/lib/auth.ts`, `src/middleware.ts`
-   - "redirect after login" → `src/app/post-signin/`, `src/middleware.ts`, NextAuth callbacks
-   - "form validation" → `src/lib/validations/`
-   - "i18n string" → `src/lib/i18n/`
+1. **Infer likely files for each AC item.** Use the constitution's folder structure plus the AC's domain language. Illustrative examples (the real paths come from folder-structure.md):
+   - "sign-in screen" → `src/app/(auth)/login/` (Next.js) · `force-app/main/default/lwc/loginForm/` (Salesforce)
+   - "session lifetime" → `src/lib/auth.ts` (Next.js) · `src/main/java/.../security/SessionConfig.java` (Spring)
+   - "discount rule on order save" → `force-app/main/default/classes/OrderTriggerHandler.cls` (Salesforce) · `app/services/order_service.py` (Python)
    - When the heuristic is weak, use `Glob` and `Grep` once each and stop — wide searches are a last resort and must be surfaced in Notes.
 
 2. **Read the inferred files.** For each:
@@ -32,13 +30,13 @@ Without this audit, a mature codebase produces specs that overstate scope: every
    - **`done`** — code already satisfies the AC; AC becomes a `MODIFIED` requirement only when `openspec/specs/<capability>/spec.md` already has a requirement with the same header, otherwise an `ADDED` requirement (to lock in the behaviour) or is **omitted** if the AC is a constitution-level invariant; no new task.
 
 4. **Cross-team context.** For each other-team work item under the parent story:
-   - Extract any API endpoint, contract, dependency, or environment-variable hints from its title and description.
+   - Extract any interface (endpoint, event, callout), contract, dependency, or environment-variable hints from its title and description.
    - These flow into `design.md`'s **API Integration** subsection, *not* into spec scenarios for this repo.
    - Check them against the interface contract (if any); the contract wins on shape. Note disagreements in the matrix Notes.
 
 ## Output
 
-Present a single matrix to the user:
+Present a single matrix to the user. Illustrative (frontend repo):
 
 ```
 ## Codebase Audit for <STORY-KEY>
@@ -53,8 +51,8 @@ Present a single matrix to the user:
 
 ### Cross-team context (other-team work items under <STORY-KEY>)
 
-- **<BE-KEY> "BE - SSO callback endpoint"** (excerpt from description): backend will expose `POST /api/auth/sso-callback` accepting Google ID token; returns JWT with `role` claim.
-- **<BE-KEY> "BE - User provisioning"** (excerpt): backend auto-provisions on first sign-in for allow-listed domains; no FE involvement.
+- **<OTHER-KEY> "API - SSO callback endpoint"** (excerpt from description): the API team will expose `POST /api/auth/sso-callback` accepting Google ID token; returns JWT with `role` claim.
+- **<OTHER-KEY> "API - User provisioning"** (excerpt): the API auto-provisions on first sign-in for allow-listed domains; no work in this repo.
 ```
 
 ## Confirmation
@@ -71,4 +69,4 @@ Accept inline corrections (e.g. *"row 2 is actually partial — there's a stale 
 - **Audit reads only.** Never modify existing code during the audit.
 - **Quantify caveats.** If a file is too large to read fully, say so in Notes — do not claim coverage you don't have.
 - **Cross-team rows are context, not scope.** Never let other-team work-item content become an `ADDED` spec scenario in this repo.
-- **Don't conflate "constitution invariant" with "implemented".** Some AC items restate the constitution (e.g. "TypeScript strict mode"); those are `done` by virtue of the constitution and are usually omitted from the spec entirely.
+- **Don't conflate "constitution invariant" with "implemented".** Some AC items restate the constitution (e.g. "strict typing", "all queries bulkified"); those are `done` by virtue of the constitution and are usually omitted from the spec entirely.

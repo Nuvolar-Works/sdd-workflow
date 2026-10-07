@@ -1,16 +1,16 @@
 # Jira Task Decomposition
 
-Used by `/sdd-tasks-from-story` to decompose a Jira user story into board-visible Jira **Tasks** (each linked back to the story via `jira.child_link_type`) **after** an OpenSpec change has been generated for that story. The unit of decomposition is the **significant goal** — a user-visible deliverable named in the story (a panel, a component, an integration point), not a layer of the stack.
+Used by `/sdd-tasks-from-story` to decompose a Jira user story into board-visible Jira **Tasks** (each linked back to the story via `jira.child_link_type`) **after** an OpenSpec change has been generated for that story. The unit of decomposition is the **significant goal** — a user- or system-visible deliverable named in the story (a screen, an endpoint, a trigger/automation, a pipeline stage, a module), not a layer of the stack.
 
 > **Why Tasks, not Sub-tasks?** Jira Sub-tasks don't show up on the board — they're hidden inside their parent. To keep every goal visible to the team, each work item is a standalone Task linked to the story (Story and Task sit at the same hierarchy level, so the relationship is an issue link, not a `parent`). See `sdd/trackers/jira.md` § CreateChildTickets.
 
 ## Principles
 
-1. **One Task per significant goal.** A "goal" is something the PO would tick off when the story is delivered: "the clock-in panel", "the history panel", "the frontend↔backend integration." It is **not** an implementation layer (data layer, UI scaffolding, error states). Each Task groups whatever layers are needed to ship that goal.
+1. **One Task per significant goal.** A "goal" is something the PO would tick off when the story is delivered: "the clock-in screen", "the order-sync trigger", "the nightly export stage." It is **not** an implementation layer (data, UI, API, tests, error handling). Each Task groups whatever layers are needed to ship that goal.
 2. **Derived from the OpenSpec `tasks.md`.** The OpenSpec change generated for the story owns the canonical task breakdown. Each section in `tasks.md` (`## N. <Goal name>`) becomes one Jira Task. Do **not** invent goals that are not in `tasks.md`; if the breakdown looks wrong, fix `tasks.md` first.
 3. **Spec-anchored.** Every Task references the specific `specs/<capability>/spec.md` file that defines its acceptance scenarios. This is what reviewers and `/sdd-work` follow back when implementing.
-4. **Coexists with backend work.** The frontend Tasks and the backend's items live under (linked to) the same Jira parent story. Pick goal names that make the split obvious (e.g. "Frontend: clock-in panel" if the team prefixes by area).
-5. **Dependency-ordered.** Goals that need other goals' output (e.g. "frontend↔backend integration" depends on the panel that consumes it) come later in the list.
+4. **Coexists with other teams' items.** This repo's work items and other teams' items live under (linked to) the same Jira parent story. Pick goal names that make the split obvious (e.g. a `<team_prefix> -` title prefix if the team prefixes by area).
+5. **Dependency-ordered.** Goals that need other goals' output (e.g. an integration goal depends on the deliverable that consumes or exposes it) come later in the list.
 6. **Constitution-aligned.** Goals must respect `sdd/constitution/folder-structure.md` and `sdd/constitution/tech-stack.md`. If decomposition would violate the constitution, surface that to the user rather than papering over it.
 
 ## Preview shape (Phase 3 draft only)
@@ -20,16 +20,16 @@ The created body is defined solely by `sdd/templates/ticket-creation-protocol.md
 ```
 ### <Goal Title>
 - **Type:** Task (linked to the parent story via `jira.child_link_type`)
-- **Description:** <one paragraph: what gets shipped, where it fits in the page/flow>
+- **Description:** <one paragraph: what gets shipped, where it fits in the flow/system>
 - **Acceptance Criteria:** <2-4 criteria copied from the matching specs/<capability>/spec.md scenarios>
 - **Spec section:** openspec/changes/<change>/specs/<capability>/spec.md
 - **Source:** openspec/changes/<change>/tasks.md (section <N>)
 - **Suggested labels:** <comma-separated>
 - **Depends on:** <earlier goals this goal actually needs (titles in preview; the protocol writes ids), or "None">
-- **Implementation hints:** <key files / patterns from constitution / API endpoints from the integration goal>
+- **Implementation hints:** <key files / patterns from constitution / interface operations from the integration goal>
 ```
 
-## Example: "Dashboard page" story
+## Illustrative example (frontend repo): "Dashboard page" story
 
 Story (PO-written): *"As an employee, I want a dashboard page that gives me a quick overview of my workday: a clock-in/out control, my recent clock-in history, and a custom panel for upcoming events."*
 
@@ -75,9 +75,19 @@ Tasks derived from those sections (each linked to the story):
   contract; types live under src/types/dashboard.ts.
 ```
 
+## Illustrative example (Salesforce repo): "Order sync" story
+
+Story: *"As a sales ops manager, I want closed-won Opportunities to create orders in the ERP and show the sync status on the record."* Goals in `tasks.md`:
+```
+## 1. Order sync trigger and handler
+## 2. ERP order callout
+## 3. Sync status on the Opportunity record page
+```
+Apex, metadata, LWC and tests ship inside each goal; the ERP team's items under the same story are context only.
+
 ## What NOT to do
 
-- **Don't decompose by layer.** "Data layer" / "UI scaffolding" / "happy path" / "error states" / "tests" is the wrong granularity here — a Task is a user-visible goal, and its layers ship together.
+- **Don't decompose by layer.** "Data layer" / "UI scaffolding" / "happy path" / "error states" / "tests" is the wrong granularity here — a Task is a user- or system-visible goal, and its layers ship together.
 - **Don't create a Task per file.** The unit is a behaviour the PO can tick off, not a path on disk.
 - **Don't recreate the parent story's full description in every Task.** Reference the story key and the spec section instead.
 - **Don't add "polish" / "review" / "refactor existing code" Tasks** unless the story explicitly asks for them.

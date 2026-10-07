@@ -34,7 +34,7 @@ THEN the timer continues running on the server
 AND returning to the page shows the elapsed time correctly
 ```
 
-### API integration
+### UI consuming an API
 
 ```
 GIVEN the user submits the registration form with valid input
@@ -50,6 +50,22 @@ WHEN a POST request is sent to /api/v1/users
 THEN the API returns 409 with { error: "email_taken" }
 AND the form shows the error message inline next to the email field
 AND the password field is preserved
+```
+
+### Service / automation (no UI)
+
+```
+GIVEN an OrderPlaced event for an order that was already processed
+WHEN the fulfilment consumer receives the event again
+THEN no second shipment record is created
+AND the event is acknowledged without error
+```
+
+```
+GIVEN 200 Opportunity records are updated to Stage = "Closed Won" in one transaction
+WHEN the Opportunity trigger runs
+THEN each related Account's Last_Won_Date__c is set to today
+AND the transaction stays within governor limits (one query and one update for the batch)
 ```
 
 ### Authorisation
@@ -83,6 +99,6 @@ AND no duplicate entry is sent on retry
 ## Mapping rules
 
 - Every scenario should be **independently testable**. Avoid scenarios that depend on prior scenarios' state.
-- Use concrete values where they matter (HTTP codes, role names, error messages). Avoid "the system responds appropriately."
-- For API scenarios, when an API contract is provided, reference the actual endpoint path and request/response shape.
-- Edge cases to consider routinely: empty input, max-size input, concurrent updates, expired session, role boundary, null/undefined intermediate values.
+- Use concrete values where they matter (status/error codes, role names, error messages). Avoid "the system responds appropriately."
+- When an interface contract is provided (`sdd/README.md` § Interface contracts), reference the actual operation and shape.
+- Edge cases to consider routinely: empty input, max-size input, bulk/large-volume input, concurrent updates, expired session, role boundary, missing/null intermediate values.

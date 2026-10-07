@@ -11,12 +11,12 @@ While implementing, watch for these signals:
 | Signal | Likely shape |
 |--------|--------------|
 | The chosen implementation diverges from `design.md` (different primitive, different file location, different pattern) | **Decision** |
-| Backend / external dependency confirmed missing or different from the spec | **Blocker** |
-| A mock, stub, or `TODO` is being left behind for future cleanup | **Follow-up** |
+| Upstream/downstream or external dependency confirmed missing or different from the spec | **Blocker** |
+| A test double, stub, placeholder, or `TODO` is being left behind for future cleanup | **Follow-up** |
 | Confirmation received from another team that resolves a previously-open question | **Clarification** |
-| A surprise constraint forced a non-obvious choice (perf, a11y, types, browser bug) | **Decision** |
+| A surprise constraint forced a non-obvious choice (performance, platform limit, accessibility, typing, runtime/platform bug) | **Decision** |
 
-If multiple signals fire on the same moment, pick the one that best describes the **outcome on the ticket**, not the cause. (E.g. backend confirmed a different shape AND mock left behind → post a **Clarification** for the shape, then a separate **Follow-up** for the mock.)
+If multiple signals fire on the same moment, pick the one that best describes the **outcome on the ticket**, not the cause. (E.g. an upstream/downstream team confirmed a different shape AND a stub was left behind → post a **Clarification** for the shape, then a separate **Follow-up** for the stub.)
 
 ## Prompt flow
 
@@ -53,8 +53,8 @@ If `yes`:
 
 1. Build a payload:
    - **Title**: brief and action-oriented. Examples:
-     - For a Blocker: `"Replace mock with real /api/v1/dashboard integration"`
-     - For a Follow-up: `"Migrate <component> to <new-pattern> when <condition>"`
+     - For a Blocker: `"Replace stub with real <operation> integration"` (e.g. `GET /orders/{id}`, the `OrderCreated` event, the ERP callout)
+     - For a Follow-up: `"Migrate <file/module> to <new-pattern> when <condition>"`
    - **Description**: 3-line block — *what* needs to happen, *where* (file:line of the placeholder), *why* (one sentence pulled from the comment).
    - **Labels**: `follow-up` plus the area labels of the current work item.
    - **Type**: `feat` for a Blocker (it's deferred work); `chore` for a pure cleanup Follow-up.

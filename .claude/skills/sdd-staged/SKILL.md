@@ -80,10 +80,10 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (fallbacks: `sdd/prds/<fea
 15. **Continue mode**: skip this phase. Use the existing `<feature-slug>-stages.md` to drive Phase 3. If the stage map is missing, rebuild the stage list from the `openspec/changes/<feature-slug>-NN-*` directories found in Phase 0.5.
 
     **Otherwise**: propose 3-6 stages. Algorithm:
-    - Greenfield defaults: `01-setup` (init, tooling, CI), `02-scaffold` (app shell, routing, layout, shared utilities).
+    - Greenfield defaults: `01-setup` (init, tooling, CI), `02-scaffold` (skeleton of the chosen architecture — e.g. app shell and routing for a UI, service skeleton and persistence wiring for a backend, org/project config and base metadata for a platform project).
     - Group user stories by functional area or dependency chain.
     - Order by dependency: features others depend on come first.
-    - If API Contract exists, stages that set up clients/types come before stages that consume them.
+    - If API Contract exists, stages that implement the contract's interface (clients, handlers, shared types) come before stages that depend on them.
 
 16. Present proposed stages as a table. Allow add / remove / reorder / rename / reassign-stories. Wait for explicit approval. Stages with zero user stories (setup/scaffold) are fine. On approval, write the stage map (format in step 22) to `sdd/tasks/<feature-slug>-stages.md` with the Tickets column empty.
 
@@ -98,7 +98,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (fallbacks: `sdd/prds/<fea
        openspec new change "$CHANGE_NAME"
        ```
 
-    c. If this is the first API-consuming stage and an API Contract exists, copy the contract source to `openspec/changes/$CHANGE_NAME/api-contract.<ext>` (keeping the source's extension).
+    c. If this is the first stage that consumes or implements the API Contract, copy the contract source to `openspec/changes/$CHANGE_NAME/api-contract.<ext>` (keeping the source's extension).
 
     d. Get artifact build order: `openspec status --change "$CHANGE_NAME" --json`.
 
@@ -108,7 +108,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (fallbacks: `sdd/prds/<fea
        - **Re-run gate**: in Continue mode, skip if file exists. In Regenerate mode, show diff and require explicit `yes`.
        - Create using the `template` from instructions. Scope strictly to this stage. For stages > 01, include a context block summarizing what earlier stages produce.
        - For specs, reference `sdd/templates/given-when-then-examples.md`.
-       - For API-consuming tasks, mirror the enrichment from `/sdd-from-prd`.
+       - For tasks that touch the API Contract, mirror the enrichment from `/sdd-from-prd`.
        - Apply `context` and `rules` as constraints; don't copy them in.
        - Re-check status after each artifact.
 
