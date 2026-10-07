@@ -65,14 +65,21 @@ Mirrors `/sdd-work`'s spec-loading so the Design Alignment check in Phase 2 has 
 
 ## Phase 2: Verify
 
-If `git status --porcelain` is non-empty, list the files and ask the user to commit or stash them before continuing (uncommitted edits would pass the checks but never reach the PR).
+If `git status --porcelain` is non-empty, list the files and ask the user to either commit this ticket's files (`git add <paths>` — never `git add -A` or `git add .`, which sweeps in unrelated work) or confirm the rest are unrelated and continue with them left uncommitted (uncommitted edits would pass the checks but never reach the PR).
 
-14. Review all changes on this branch versus the base:
+14. Review all changes on this branch versus the base, using the merge base so changes merged into the base after the branch was cut don't count as this branch's work:
     ```bash
+    MB=$(git merge-base origin/<base> HEAD)
     git log origin/<base>..HEAD --oneline
-    git diff origin/<base>..HEAD --stat
+    git diff $MB HEAD --stat
     ```
-    Read through the changed files to understand what was implemented.
+    If there is no merge base (e.g. a shallow clone), fall back to `git diff origin/<base>..HEAD --stat` and warn that the diff may include base-branch changes. Read through the changed files to understand what was implemented.
+
+    **Stray-file scan.** List the net-diff paths (`git diff $MB HEAD --name-only`) and flag any path under `openspec/`, `sdd/tasks/` or `sdd/prds/` that does not start with `openspec/changes/<CHANGE_NAME>/`, `sdd/tasks/<CHANGE_NAME>` or `sdd/prds/<CHANGE_NAME>`. Living specs (`openspec/specs/**`) and archive output (`openspec/changes/archive/**`) are therefore always flagged, and so is every planning path when `CHANGE_NAME = none`. These usually arrive when another session's `git add -A` sweeps up uncommitted planning files. If any are flagged, list them and ask via **AskUserQuestion**:
+    - **Remove from this PR (recommended)** — `git restore --source=$MB --staged -- <paths>`, then commit `chore(sdd): remove stray planning files <ticket-ref>`. Only the index changes; the working-tree copies stay as they are, so nothing is lost. Never rewrite history.
+    - **Keep them** — the user confirms they belong in this PR.
+
+    When `DRY_RUN`, list the strays and print `[DRY RUN] would remove <n> stray files in a new commit`.
 
 15. Check each acceptance criterion from the ticket body:
     - Verify it is met by examining the code.
@@ -109,6 +116,7 @@ If `git status --porcelain` is non-empty, list the files and ask the user to com
     - Error handling: CLEAN / <issues>
     - Design alignment: CLEAN / N/A / <deviations>
     - Constitution compliance: CLEAN / N/A / <violations>
+    - Stray files: CLEAN / <removed or kept paths>
 
     ### Project Checks (one row per gate run in step 17)
     - <gate>: PASS/FAIL/NOT CONFIGURED
