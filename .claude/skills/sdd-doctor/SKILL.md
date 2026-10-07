@@ -1,6 +1,6 @@
 ---
 name: sdd-doctor
-description: Pre-flight diagnostic for SDD. Verifies sdd/config.json is valid, the active tracker is authenticated, the constitution is present, OpenSpec is installed, and the working tree is clean. Run before /sdd-work if anything feels off.
+description: Pre-flight diagnostic for SDD. Verifies sdd/config.json is valid, the active tracker and git host are authenticated, the constitution is present, OpenSpec is installed, and the working tree is clean. Run before /sdd-work if anything feels off.
 argument-hint: "[--dry-run]"
 disable-model-invocation: true
 ---
@@ -19,19 +19,20 @@ Run each check, capture the result, and assemble a report. Don't stop on the fir
 
 - File exists at `sdd/config.json`?
 - Parses as JSON?
-- Has `tracker` and `vcs` fields with allowed values (`github` or `jira` for tracker; `github` for vcs)?
+- Has `tracker` and `vcs` fields with allowed values (`github` or `jira` for tracker; `github` or `bitbucket` for vcs)? `tracker: github` requires `vcs: github`.
+- Base branch resolves per `sdd/trackers/protocol.md`: `base_branch`, else legacy `github.default_base_branch` (note: `ℹ legacy github.default_base_branch — re-run /sdd-setup to move it to base_branch`), else `develop`.
 - If tracker is `jira`, has non-null `jira.site`, `project_key`, `child_issue_type`, `child_link_type`, `status_workflow.{in_progress,in_review,done}`?
 
-Fail row example: `✗ sdd/config.json: tracker is "jira" but jira.project_key is null. Re-run /sdd-setup.`
+Fail row examples: `✗ sdd/config.json: tracker is "jira" but jira.project_key is null. Re-run /sdd-setup.` · `✗ sdd/config.json: tracker "github" requires vcs "github" (got "bitbucket").`
 
-### 2. Active tracker is authenticated
+### 2. Active tracker and git host are authenticated
 
-Read `tracker` from `sdd/config.json`. Then:
+Read `tracker` and `vcs` from `sdd/config.json`. Then:
 
-- **Always** (PRs go through GitHub in both modes): run `gh auth status` and capture exit code + first line of output.
+- **Always**: run the `VerifyVcsAuth` operation from `sdd/trackers/<vcs>.md`. Pass if it succeeds; capture the first line of the error otherwise.
 - **jira**: also run the `VerifyAuth` operation from `sdd/trackers/jira.md`. Pass if it succeeds; fail on an auth error or if `jira.site` is not listed.
 
-Fail row example: `✗ Jira auth: Atlassian Rovo MCP not authenticated. Run /sdd-setup to re-auth.`
+Fail row examples: `✗ Jira auth: Atlassian Rovo MCP not authenticated. Run /sdd-setup to re-auth.` · `✗ Bitbucket auth: BITBUCKET_EMAIL / BITBUCKET_API_TOKEN (or BITBUCKET_ACCESS_TOKEN) not set. Export them in your shell profile.`
 
 ### 3. Constitution is present
 
@@ -43,9 +44,9 @@ Fail row example: `✗ Jira auth: Atlassian Rovo MCP not authenticated. Run /sdd
 
 ### 4. OpenSpec CLI is installed and `openspec/` is initialised
 
-- `openspec --version` succeeds?
+- `openspec --version` succeeds? (Node/npm is needed only for this CLI, not for the project's stack.)
 - `openspec/specs/` exists?
-- `jq --version` succeeds? (the commit-message hook needs it)
+- `jq --version` succeeds? (the commit-message hook needs it; so does `sdd/trackers/bitbucket.sh` when vcs is `bitbucket`)
 
 ### 5. MCP availability matches `sdd/config.json` `mcps_enabled`
 
@@ -57,7 +58,7 @@ For each entry in `mcps_enabled`, check that the corresponding MCP is reachable.
 - Or list the modified/untracked files (note, don't fail).
 - Current branch and base branch:
   - `git branch --show-current`
-  - Base branch from `sdd/config.json`. Verify it exists locally (`git rev-parse --verify <base>`).
+  - Base branch from `sdd/config.json` per the protocol rule (`base_branch` → legacy `github.default_base_branch` → `develop`). Verify it exists locally (`git rev-parse --verify <base>`).
 
 ### 7. Branch / ticket linkage (informational)
 
@@ -89,7 +90,8 @@ This check is informational only — never `✗`. Orphans don't block work but d
 ```
 ## SDD Doctor Report
 
-✓ sdd/config.json: valid (tracker=jira, vcs=github)
+✓ sdd/config.json: valid (tracker=jira, vcs=bitbucket, base=develop)
+✓ Bitbucket auth: your-workspace/your-repo reachable
 ✓ Jira auth: authenticated to your-org.atlassian.net (project TT)
 ✓ Constitution: sdd/constitution/index.md present (v1.4.0)
 ✓ OpenSpec: v0.x.x, openspec/ initialised
@@ -97,7 +99,7 @@ This check is informational only — never `✗`. Orphans don't block work but d
 ⚠ Working tree: 3 modified files (<path-a>, <path-b>, ...)
 ℹ Current branch: feat/tt-456-add-clock-in (ticket TT-456)
 
-Overall: 5/5 critical checks pass; 1 warning.
+Overall: 6/6 critical checks pass; 1 warning.
 ```
 
 ## Rules

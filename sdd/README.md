@@ -26,6 +26,7 @@ Two modes, controlled by `sdd/config.json`:
 |------|---------|-----|---------|----------|
 | GitHub | github | github | GitHub Issues | GitHub |
 | Jira | jira | github | Jira | GitHub (PRs reference Jira keys; statuses synced to Jira) |
+| Jira + Bitbucket | jira | bitbucket | Jira | Bitbucket Cloud (REST via `sdd/trackers/bitbucket.sh`; API token in env vars) |
 
 The Jira mode was formerly called Hybrid.
 
@@ -88,7 +89,7 @@ sdd/
 ├── prds/                    ← versioned PRDs
 ├── apis/                    ← interface contracts, or pointers to where they live (optional)
 ├── tasks/                   ← issue-mapping files per change
-├── trackers/                ← protocol.md + per-tracker recipes (github.md, jira.md)
+├── trackers/                ← protocol.md + tracker / git-host recipes (github.md, jira.md, bitbucket.md + bitbucket.sh)
 ├── templates/               ← shared templates loaded on demand by skills
 ├── prd-template.md          ← greenfield PRD template
 └── prd-template-mini.md     ← v2+ / change-request PRD template

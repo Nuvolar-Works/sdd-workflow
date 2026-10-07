@@ -11,7 +11,7 @@ You are verifying completed work and creating a PR.
 
 ## Input
 
-`$ARGUMENTS` parsed for an optional `<ticket-id>` (overrides branch-name detection) and an optional `--dry-run`. When `--dry-run`: verification runs (read-only), PR body and ticket comment drafts are printed, but `gh pr create`, branch push, and ticket transitions are skipped.
+`$ARGUMENTS` parsed for an optional `<ticket-id>` (overrides branch-name detection) and an optional `--dry-run`. When `--dry-run`: verification runs (read-only), PR body and ticket comment drafts are printed, but `CreatePR`, branch push, and ticket transitions are skipped.
 
 ## Phase 0: Tracker Setup
 
@@ -31,7 +31,7 @@ You are verifying completed work and creating a PR.
 
 6. Run `FetchTicket(<ticket-id>)` to get the title, body, and labels.
 
-7. Determine the base branch from `sdd/config.json` (`github.default_base_branch`, default `develop`) and refresh it:
+7. Determine the base branch per the **Base branch** rule in `sdd/trackers/protocol.md` and refresh it:
    ```bash
    git fetch origin <base>
    ```
@@ -153,11 +153,11 @@ This commit is pushed in Phase 3, so the checkbox update is part of the feature 
 
 ## Phase 3: Create PR
 
-23. Check for an existing PR on the branch (read-only, run directly): `gh pr view --json number,url,state`. If it is MERGED or CLOSED, stop and tell the user (do not push).
+23. Check for an existing PR on the branch with `GetCurrentPR()` from the active VCS recipe (read-only). `null` means no PR yet. If it is `MERGED` or `CLOSED`, stop and tell the user (do not push).
 
     Run `PushBranch(<current-branch>)` from the active VCS recipe. When `DRY_RUN`, print `[DRY RUN] would PushBranch(<branch>)`.
 
-    If the PR is OPEN, skip steps 24–26 (`CreatePR` and `LinkTicketToPR`), print the existing PR URL, and go to Phase 4.
+    If the PR is `OPEN`, skip steps 24–26 (`CreatePR` and `LinkTicketToPR`), print the existing PR URL, and go to Phase 4.
 
 24. Read `sdd/templates/pr-body.md` for the PR body structure. Substitute the placeholders:
     - Summary, Changes, Acceptance Criteria, Testing
@@ -171,7 +171,7 @@ This commit is pushed in Phase 3, so the checkbox update is part of the feature 
 
 26. Run `LinkTicketToPR(<ticket-id>, <pr>)` from the active tracker recipe. This:
     - For GitHub: calls `CloseTicket(<ticket-id>, "Resolved in PR #<pr-id>.")` because PRs target `develop` (not the default branch) and GitHub only auto-closes on default-branch merge.
-    - For Jira: posts a comment with the PR URL on the ticket and runs `UpdateTicketStatus(<ticket-id>, "in_review")`; the GitHub PR carries the `Resolves <JIRA-KEY>` reference. If that returns `unreachable`, print one warning — `<ticket-id> left in <current_status>; <jira.status_workflow.in_review> not reachable from there. PR link posted; move it manually if needed.` — and continue. Never fail the PR step over it.
+    - For Jira: posts a comment with the PR URL on the ticket and runs `UpdateTicketStatus(<ticket-id>, "in_review")`; the PR carries the `Resolves <JIRA-KEY>` reference. If that returns `unreachable`, print one warning — `<ticket-id> left in <current_status>; <jira.status_workflow.in_review> not reachable from there. PR link posted; move it manually if needed.` — and continue. Never fail the PR step over it.
 
     When `DRY_RUN`, print the intended `LinkTicketToPR(...)` call without executing.
 
@@ -193,7 +193,7 @@ This commit is pushed in Phase 3, so the checkbox update is part of the feature 
 - The PR title must follow conventional commit format with the ticket reference.
 - The PR body must include the ticket close line so the ticket auto-closes (or transitions) on merge where supported.
 - Always push before creating the PR (skipped in dry-run).
-- Feature PRs target the configured base branch (`develop` by default). Only ask the user to confirm a different base if the configured base does not exist.
-- Use abstract operation names from `sdd/trackers/protocol.md`; never embed `gh` or MCP calls inline. Exception: read-only `gh pr view` on the current branch's PR (step 23).
+- Feature PRs target the base branch per the **Base branch** rule in `sdd/trackers/protocol.md`. Only ask the user to confirm a different base if the configured base does not exist.
+- Use abstract operation names from `sdd/trackers/protocol.md`; never embed `gh`, `curl` or MCP calls inline (plain `git` is fine).
 - Do NOT merge the PR. That is a human decision.
 - The current ticket's `tasks.md` checkboxes are flipped here (Phase 2.8) so they ship in the feature PR. The remaining post-merge cleanup (archive OpenSpec change, close parent story, and a reconciliation pass over tasks.md checkboxes) lives in `/sdd-status`'s Completion Sweep — point the user there in the hand-off message.

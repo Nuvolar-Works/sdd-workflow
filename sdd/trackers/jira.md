@@ -157,9 +157,9 @@ No-op. Jira labels are free-form strings — no creation step needed; they are s
 
 ## CreateBranch / PushBranch / CreatePR / LinkTicketToPR
 
-These are VCS operations. Read `sdd/trackers/<vcs>.md` (typically `github.md`) for the implementation. The Jira recipe only contributes to `LinkTicketToPR`:
+These are VCS operations. Read `sdd/trackers/<vcs>.md` (`github.md` or `bitbucket.md`) for the implementation. The Jira recipe only contributes to `LinkTicketToPR`:
 
-After the PR is created in GitHub:
+After the PR is created on the git host:
 1. `CommentOnTicket(<jira-key>, "PR opened: <pr-url>")`.
 2. `UpdateTicketStatus(<jira-key>, "in_review")`.
 
@@ -167,14 +167,14 @@ Once the PR merges, `/sdd-status` Phase 5 (Class A.1) detects the merge and call
 
 ## GetLinkedPR(id)
 
-Resolve the GitHub PR linked to a Jira ticket. Used by `/sdd-status` Phase 5 Class A.1 to detect that a work-item ticket in `in_review` has its PR merged and is ready to transition to `done`.
+Resolve the PR linked to a Jira ticket. Used by `/sdd-status` Phase 5 Class A.1 to detect that a work-item ticket in `in_review` has its PR merged and is ready to transition to `done`.
 
 1. `FetchComments(id)`.
 2. Scan comments newest-first for either:
    - `PR opened: <url>` (posted by `LinkTicketToPR` above), or
-   - any GitHub PR URL matching `https?://github\.com/[^/]+/[^/]+/pull/(\d+)`.
-   Extract the PR number from the first match.
+   - any PR URL for this repo's host.
+   Extract the PR number with the VCS recipe's `ParsePRUrl`.
 3. If no PR URL is found, return `null`.
-4. Otherwise call `gh pr view <pr_number> --json state,mergedAt -q '{state, mergedAt}'` and return `{ pr_number, state, merged_at }`. (`gh` is available because `vcs: github` is the only supported VCS — see `sdd/config.example.json`.)
+4. Otherwise call the VCS recipe's `GetPR(<pr_number>)` and return `{ pr_number, state, merged_at }`.
 
 State is one of `MERGED`, `CLOSED` (not merged), `OPEN`.

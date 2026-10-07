@@ -1,8 +1,10 @@
 {
   "tracker": "github",
   "vcs": "github",
-  "github": {
-    "default_base_branch": "develop"
+  "base_branch": "develop",
+  "bitbucket": {
+    "workspace": null,
+    "repo_slug": null
   },
   "jira": {
     "site": "your-org.atlassian.net",

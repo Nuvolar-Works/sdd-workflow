@@ -43,12 +43,12 @@ for f in "${TOP_LEVEL[@]}"; do
   fi
 done
 
-# Tracker recipes (remove stale seed copies first so deleted/renamed files don't linger)
+# Tracker recipes and helper scripts (remove stale seed copies first so deleted/renamed files don't linger)
 mkdir -p "$SEED_DIR/trackers"
-rm -f "$SEED_DIR"/trackers/*.md
-for src in "$SDD_DIR"/trackers/*.md; do
+rm -f "$SEED_DIR"/trackers/*.md "$SEED_DIR"/trackers/*.sh
+for src in "$SDD_DIR"/trackers/*.md "$SDD_DIR"/trackers/*.sh; do
   [[ -f "$src" ]] || continue
-  cp "$src" "$SEED_DIR/trackers/"
+  cp -p "$src" "$SEED_DIR/trackers/"
   echo "  synced  trackers/$(basename "$src")"
 done
 

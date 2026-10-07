@@ -83,7 +83,7 @@ Last 5 commits:
 ...
 ```
 
-If the current branch is the base branch (`develop` or `main`), omit the "Linked ticket" line.
+If the current branch is the base branch (`base_branch`, per `sdd/trackers/protocol.md`), omit the "Linked ticket" line.
 
 ## Phase 5: Completion Sweep
 
@@ -102,7 +102,7 @@ For each GitHub ticket in a candidate change:
 
 For each Jira ticket in the aggregate that is **not yet** in `jira.status_workflow.done` (typically `In Review`, but also any earlier status):
 
-1. Call `GetLinkedPR(<jira-key>)` from the Jira recipe. This scans the ticket's comments for a GitHub PR URL (posted by `LinkTicketToPR`) and checks the PR state via `gh`. Returns `{ pr_number, state, merged_at }` or `null`.
+1. Call `GetLinkedPR(<jira-key>)` from the Jira recipe. This scans the ticket's comments for a PR URL (posted by `LinkTicketToPR`) with the VCS recipe's `ParsePRUrl` and checks the PR state via its `GetPR`. Returns `{ pr_number, state, merged_at }` or `null`.
 2. If `state == MERGED`, the ticket is a Class A.1 candidate — its PR has merged but the Jira status hasn't caught up.
 3. If `state` is `OPEN` or `CLOSED` (not merged), or `null`, skip — the ticket is genuinely still in review (or has no PR yet).
 
