@@ -1,6 +1,6 @@
 # SDD Workflow
 
-Spec-Driven Development workflow for a frontend team, powered by [Claude Code](https://claude.ai/claude-code) and [OpenSpec](https://github.com/Fission-AI/OpenSpec).
+Spec-Driven Development workflow for any stack, powered by [Claude Code](https://claude.ai/claude-code) and [OpenSpec](https://github.com/Fission-AI/OpenSpec).
 
 Automates the full pipeline: **PRD &rarr; specifications &rarr; tickets (GitHub or Jira) &rarr; AI-driven development &rarr; verified PRs**.
 
@@ -15,6 +15,8 @@ Supports two tracker modes: **GitHub** (GitHub Issues + GitHub for code/PRs) and
 | [OpenSpec](https://github.com/Fission-AI/OpenSpec) | `npm install -g @fission-ai/openspec@latest` | Specification generation and management |
 | [jq](https://jqlang.github.io/jq/) | `brew install jq` | Used by the conventional-commit hook |
 | Jira MCP (optional) | Configure via `/sdd-setup` | Jira story and linked-task management (Jira mode) |
+
+Node/npm is needed only to install the Claude Code and OpenSpec CLIs, not for your project's own stack.
 
 ## Quick Start
 
@@ -139,10 +141,10 @@ No PRD needed. The skill reads the Jira story and creates one board-visible Task
 ### Path C: Developer-driven (no PRD)
 
 ```
-/openspec-propose "add dark mode"    Generates proposal, specs, design, tasks
+/openspec-propose "add order export" Generates proposal, specs, design, tasks
         |
         v
-/sdd-create-tickets add-dark-mode   Creates tickets from the tasks
+/sdd-create-tickets add-order-export Creates tickets from the tasks
         |
         v
 /sdd-work <ticket-id>               (same as Path A from here)
@@ -213,9 +215,9 @@ Template: `sdd/templates/design-challenge.md`
 
 Runs automatically in `/sdd-verify` after acceptance criteria and CI checks. Evaluates:
 - **Pattern consistency**: does the code match existing codebase conventions?
-- **Security**: XSS, injection, exposed secrets, auth gaps
-- **Performance**: unnecessary re-renders, missing memoisation, N+1 fetches
-- **Error handling**: system boundaries covered, error states in UI
+- **Security**: injection (SQL, SOQL, XSS…), exposed secrets, auth and permission gaps
+- **Performance**: work repeated per item inside loops (N+1 queries, queries/DML in loops, avoidable re-renders), unbounded data loads
+- **Error handling**: system boundaries covered, failures surfaced to callers or users
 - **Design alignment**: matches `design.md` if an OpenSpec change is linked
 - **Constitution compliance**: NON-NEGOTIABLE violations are flagged as blocker recommendations (user decides); RECOMMENDED deviations are advisory
 
@@ -257,7 +259,7 @@ The PRD template sections:
 | **API Contract** | Interface contract file path or URL — OpenAPI, GraphQL SDL, .proto, AsyncAPI… (optional) | API-enriched specs, design, and tasks |
 | **Open Questions** | Unresolved items | Flagged before spec generation |
 
-### Adding a Backend API Contract (optional)
+### Adding an Interface Contract (optional)
 
 Reference the interface contract in the PRD's **API Contract** section:
 
@@ -268,7 +270,7 @@ sdd/apis/user-auth.yaml
 https://api.example.com/docs/openapi.yaml
 ```
 
-When `/sdd-from-prd` runs, it will enrich generated specs with endpoint-specific GIVEN-WHEN-THEN scenarios, add API integration sections to `design.md`, and include API integration tasks in `tasks.md`.
+When `/sdd-from-prd` runs, it will enrich generated specs with operation-specific GIVEN-WHEN-THEN scenarios, add API integration sections to `design.md`, and include API integration tasks in `tasks.md`.
 
 ### Staged Greenfield Development
 
@@ -276,12 +278,12 @@ Use `/sdd-staged` for large greenfield features (3+ user stories, or projects ne
 
 Stage naming convention: `<feature>-NN-<slug>` (e.g. `my-app-01-setup`, `my-app-02-scaffold`, `my-app-03-auth-flow`).
 
-**Recommended frontend stage patterns:**
+**Recommended stage patterns:**
 
 | Stage | Typical content |
 |-------|----------------|
 | `01-setup` | Project init, tooling, linting, CI, dependencies |
-| `02-scaffold` | App shell, routing, layout, shared components, state management skeleton |
+| `02-scaffold` | Skeleton of the chosen architecture: app shell & routing, service skeleton & persistence wiring, or base org/project config |
 | `03-xx` onwards | Feature areas grouped by functional domain |
 
 ### Developing a Ticket
@@ -299,7 +301,7 @@ The agent will:
 5. Present an implementation plan and wait for your approval
 6. Create a branch: `feat/42-add-login-form` or `feat/tt-456-add-login-form`
 7. Implement following constitution principles
-8. Run tests, lint, build (if configured)
+8. Run the quality gates from `sdd/constitution/quality-gates.md` (tests, static checks, build)
 9. Commit with conventional commits: `feat(auth): add login form (#42)` or `feat(auth): add login form [TT-456]`
 10. Verify each acceptance criterion is met
 

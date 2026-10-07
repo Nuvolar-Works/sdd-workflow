@@ -55,13 +55,13 @@ All `sdd-*` skills except `/sdd-setup` accept `--dry-run` for previewing without
 
 <!-- Project-specific commands go here. Examples: -->
 # <project-specific commands here>
-# e.g. npm test — Run all tests
-# e.g. npm run lint — Run linter
-# e.g. npm run build — Build the project
+# e.g. npm test / ./gradlew test / sf apex run test — Run all tests
+# e.g. npm run lint / ./gradlew check / sf code-analyzer run — Run linter / static checks
+# e.g. npm run build / ./gradlew build / sf project deploy validate — Build or validate the project
 
 ## Test Conventions
 
-- When debugging a failing test, prefer running a single test file with a minimal reporter over the full suite — dramatically less context consumed.
+- When debugging a failing test, prefer the narrowest test scope the stack supports (single file, class or method) with a minimal reporter over the full suite — dramatically less context consumed.
 - Only run the full test suite for the final quality gate after all fixes are in.
 
 ## Response Style
