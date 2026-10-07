@@ -67,7 +67,7 @@ Archive a completed change in the experimental workflow.
 
 5. **Perform the archive**
 
-   Follow `sdd/README.md` § Archiving (pre-flight, snapshot, `openspec archive "<name>" --yes`, on-disk success check, rollback). Add `--skip-specs` if the user chose "Archive without syncing" or "Archive now" (already synced); stop on "Cancel". The CLI applies the delta specs to `openspec/specs/` and moves the change to `openspec/changes/archive/YYYY-MM-DD-<name>/`. If pre-flight or the archive fails, show the error and stop — the procedure has already rolled back `openspec/specs/`.
+   Follow `sdd/docs/archiving.md` § Archiving procedure (pre-flight, snapshot, `openspec archive "<name>" --yes`, on-disk success check, rollback). Add `--skip-specs` if the user chose "Archive without syncing" or "Archive now" (already synced); stop on "Cancel". The CLI applies the delta specs to `openspec/specs/` and moves the change to `openspec/changes/archive/YYYY-MM-DD-<name>/`. If pre-flight or the archive fails, show the error and stop — the procedure has already rolled back `openspec/specs/`.
 
    **Archive the SDD mapping (if present):**
 

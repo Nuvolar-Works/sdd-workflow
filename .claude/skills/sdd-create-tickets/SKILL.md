@@ -79,7 +79,7 @@ You are creating tracker tickets from an OpenSpec change's artifacts. The active
 
 ## Phase 2: Planning PR
 
-11. Offer (AskUserQuestion) to commit the planning artifacts in their own PR per `sdd/README.md` § Committing planning artifacts, with `<change>` = `$ARGUMENTS`. Paths: the mapping file `sdd/tasks/$ARGUMENTS.md` and `openspec/changes/$ARGUMENTS/` (the `tasks.md` annotations, plus any change files not yet committed). VCS operations come from `sdd/trackers/<vcs>.md` (`vcs` in `sdd/config.json`). When `DRY_RUN`, print the branch, paths and commit message only.
+11. Offer (AskUserQuestion) to commit the planning artifacts in their own PR per `sdd/docs/planning-prs.md`, with `<change>` = `$ARGUMENTS`. Paths: the mapping file `sdd/tasks/$ARGUMENTS.md` and `openspec/changes/$ARGUMENTS/` (the `tasks.md` annotations, plus any change files not yet committed). VCS operations come from `sdd/trackers/<vcs>.md` (`vcs` in `sdd/config.json`). When `DRY_RUN`, print the branch, paths and commit message only.
 
 ## Rules
 

@@ -8,7 +8,7 @@ Without this audit, a mature codebase produces specs that overstate scope: every
 
 - **AC list** — extracted from the story description (and Phase 1.5 comment highlights, if any). One row per AC item.
 - **Folder structure** — `sdd/constitution/folder-structure.md` is the primary source of truth for *where* relevant code lives.
-- **Interface contract** (optional) — resolved per `sdd/README.md` § Interface contracts. Read it before classifying any AC item that names an operation or field: present in the contract means supported, even if prose omits it.
+- **Interface contract** (optional) — resolved per `sdd/docs/interface-contracts.md`. Read it before classifying any AC item that names an operation or field: present in the contract means supported, even if prose omits it.
 - **Cross-team context** (optional) — descriptions of work items owned by other teams/repos (any layer) under the same parent (`jira.team_prefix` is used to identify which work items belong to *other* teams; their titles/descriptions are pulled for context only, never as scope).
 
 ## Process

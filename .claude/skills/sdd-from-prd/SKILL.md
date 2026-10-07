@@ -144,7 +144,7 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
 
 ## Phase 4: Planning PR
 
-25. Offer (AskUserQuestion) to commit the planning artifacts in their own PR per `sdd/README.md` § Committing planning artifacts, with `<change>` = `<feature-slug>`. Paths: `openspec/changes/<feature-slug>/`, `sdd/tasks/<feature-slug>.md` (if tickets were created), and `sdd/prds/<feature-slug>.md` when it is untracked. VCS operations come from `sdd/trackers/<vcs>.md`. When `DRY_RUN`, print the branch, paths and commit message only.
+25. Offer (AskUserQuestion) to commit the planning artifacts in their own PR per `sdd/docs/planning-prs.md`, with `<change>` = `<feature-slug>`. Paths: `openspec/changes/<feature-slug>/`, `sdd/tasks/<feature-slug>.md` (if tickets were created), and `sdd/prds/<feature-slug>.md` when it is untracked. VCS operations come from `sdd/trackers/<vcs>.md`. When `DRY_RUN`, print the branch, paths and commit message only.
 
 ## Rules
 
@@ -152,6 +152,6 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
 - Respect Non-Goals.
 - If the PRD is vague, ask rather than guess.
 - Use abstract operation names from `sdd/trackers/protocol.md`.
-- The API contract is supplementary; PRD wins for scope (the contract wins on shape — see `sdd/README.md` § Interface contracts). Don't generate tasks for operations not referenced by any PRD user story.
+- The API contract is supplementary; PRD wins for scope (the contract wins on shape — see `sdd/docs/interface-contracts.md`). Don't generate tasks for operations not referenced by any PRD user story.
 - Re-run safety in Phase 0.5 prevents silent overwrites. Default to Continue; require explicit Regenerate.
 - If any step fails, stop and report clearly.
