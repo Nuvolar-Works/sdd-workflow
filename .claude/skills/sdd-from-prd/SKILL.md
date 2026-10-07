@@ -109,8 +109,8 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
 
     d. Create the artifact using the `template` from instructions. Map PRD content to artifact sections:
        - **proposal.md**: Problem → problem, Goals → objectives, Non-Goals → exclusions, User Stories → user needs. Mention API integration scope if relevant.
-       - **specs/<capability>/spec.md**: User Stories → GIVEN-WHEN-THEN scenarios. Reference `sdd/templates/given-when-then-examples.md` for shape and edge-case categories. For API stories, include integration scenarios with endpoints, request/response shapes, error paths.
-       - **design.md**: Technical Considerations → architecture, Dependencies → integration points, UI/UX → component structure. Add "API Integration" subsection if applicable.
+       - **specs/<capability>/spec.md**: User Stories → GIVEN-WHEN-THEN scenarios. Reference `sdd/templates/given-when-then-examples.md` for shape and edge-case categories. For API stories, include integration scenarios with operations, request/response (or message) shapes, failure paths.
+       - **design.md**: Technical Considerations → architecture, Dependencies → integration points, UI/UX → screen/component structure when the project has a UI layer. Add "API Integration" subsection if applicable.
        - **tasks.md**: derived from specs and design — atomic, vertically-sliced, AC-bound. Include API tasks if applicable.
 
     e. Apply `context` and `rules` as constraints; do NOT copy them into the file.

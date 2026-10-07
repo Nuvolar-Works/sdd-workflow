@@ -26,7 +26,7 @@ Pick the strongest match, in order:
 |-----|---------|
 | **Scope clarification** | Body uses phrases like "this is/isn't included", "out of scope", "let's narrow this to", "let's expand this to", "we agreed to add/drop". |
 | **Requirement change** | Body explicitly contradicts the story description. Phrases like "actually", "instead", "we need to change", "the original plan was X but". |
-| **Blocker** | Body mentions an external dependency that isn't ready. Phrases like "API not ready", "blocked on", "waiting on", "need backend to", "ETA". Or mentions another team that has unfinished work. |
+| **Blocker** | Body mentions an external dependency that isn't ready. Phrases like "API not ready", "blocked on", "waiting on", "need <other team> to", "ETA". Or mentions another team that has unfinished work. |
 | **Open question** | Body is a question that hasn't been answered in a later comment. (Check by scanning later comments for answers; if none, it's open.) |
 | **Other** | Substantive but doesn't match. Still surface to user. |
 

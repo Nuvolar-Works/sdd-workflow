@@ -38,6 +38,7 @@ Fail row example: `✗ Jira auth: Atlassian Rovo MCP not authenticated. Run /sdd
 - Pass if `sdd/constitution/index.md` exists.
 - Soft-pass with note if only the legacy `docs/constitution.md` exists.
 - Fail if neither exists.
+- If `sdd/constitution/index.md` exists but its table of contents has no `Load when` column, note (informational): `ℹ Constitution index has no Load-when column — re-run /sdd-constitution to add glob triggers`.
 - If `sdd/constitution/quality-gates.md` has a `CI baseline:` line, run `git diff <baseline-commit>..HEAD -- <ci-paths>`. Warn (don't fail) if it adds or changes commands CI executes: `⚠ CI config changed since the gates were set — re-run /sdd-constitution`. Version-pin bumps alone don't count.
 
 ### 4. OpenSpec CLI is installed and `openspec/` is initialised
@@ -93,7 +94,7 @@ This check is informational only — never `✗`. Orphans don't block work but d
 ✓ Constitution: sdd/constitution/index.md present (v1.4.0)
 ✓ OpenSpec: v0.x.x, openspec/ initialised
 ✓ MCPs: atlassian-rovo reachable
-⚠ Working tree: 3 modified files (src/components/foo.tsx, src/lib/bar.ts, ...)
+⚠ Working tree: 3 modified files (<path-a>, <path-b>, ...)
 ℹ Current branch: feat/tt-456-add-clock-in (ticket TT-456)
 
 Overall: 5/5 critical checks pass; 1 warning.
