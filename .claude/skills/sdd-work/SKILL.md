@@ -88,7 +88,7 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
        - **Ambiguous** (top two scores within 1 of each other, or two+ files tied at the top): list the top 2–3 candidates with their scores and ask: "Multiple specs match this section. Which one is correct? (1/2/3/none — describe instead)". Do not silently pick.
        - **No match**: tell the user no spec maps cleanly to this ticket and ask whether to proceed without a spec context or pick one manually.
 
-16. If the body has `## Design Excerpt`, use it; otherwise extract only the relevant section of `design.md` via grep. Do NOT read the whole file.
+16. If the body has a non-empty `## Design Excerpt`, use it; otherwise extract only the relevant section of `design.md` via grep. Do NOT read the whole file.
 
 17. Read `proposal.md` (it's short).
 

@@ -42,6 +42,8 @@ ISSUE_EOF
 
 `payload.body` is the full body built by `sdd/templates/ticket-creation-protocol.md` Step 4 (including caller additions like Stage Context and the `Source:` footer). Pass it verbatim; do not re-template.
 
+`payload.priority` is not sent: GitHub Issues have no native priority field.
+
 Capture the URL printed by `gh issue create` and parse the issue number from the URL tail.
 
 ## CreateChildTickets(parent_id, payloads[])

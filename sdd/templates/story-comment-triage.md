@@ -54,9 +54,9 @@ Allow the user to view the full body of any highlight by id ("show 2") before de
 
 Pass the **included** highlights forward to Phase 2 of `/sdd-tasks-from-story` as additional inputs alongside the story description and AC.
 
-**Conflict rule:** when an included comment conflicts with the original story description, the comment wins. Comments are more recent and represent the team's resolved view. The skill should note in `proposal.md` what was overridden — e.g.:
+**Conflict rule:** when an included comment conflicts with the original story description, the comment wins. Comments are more recent and represent the team's resolved view. The skill should note in `proposal.md` what was overridden, as a plain paragraph (not a `>` blockquote — it can flow into ticket bodies) — e.g.:
 
-> *Note: the original story description specified X. Comment from <author> on <date> revised this to Y. Spec follows Y.*
+*Note: the original story description specified X. Comment from <author> on <date> revised this to Y. Spec follows Y.*
 
 ## Step 6: Hold blocker candidates
 
