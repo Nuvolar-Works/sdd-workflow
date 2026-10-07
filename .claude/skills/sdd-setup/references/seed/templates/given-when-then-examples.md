@@ -1,6 +1,6 @@
 # GIVEN-WHEN-THEN Examples
 
-Reference for translating PRD user stories into testable scenarios in `openspec/changes/<change>/specs/*.md`. Used by `/sdd-from-prd` and `/sdd-staged` during artifact generation.
+Reference for translating PRD user stories into testable scenarios in `openspec/changes/<change>/specs/<capability>/spec.md`. Used by `/sdd-from-prd`, `/sdd-staged`, and `/sdd-tasks-from-story` during artifact generation.
 
 ## Shape
 

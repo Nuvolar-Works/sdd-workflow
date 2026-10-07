@@ -1,6 +1,6 @@
 # Ticket Comment Shapes
 
-Used by `/sdd-work` (and to a lesser extent `/sdd-verify`) when posting comments to a ticket. Five categories, each with a templated heading so future readers can scan a long thread quickly.
+Used by `/sdd-work` (Phases 3.5, 4.5) and `/sdd-status` (Class B) when posting comments to a ticket. Five categories, each with a templated heading so future readers can scan a long thread quickly.
 
 Skills load this file lazily — only when a comment is about to be drafted, not on every invocation. Comments are posted via `CommentOnTicket(id, body)` from the active tracker recipe and only after the user explicitly confirms (`yes` / `edit` / `skip`).
 
@@ -51,7 +51,7 @@ If the workaround warrants a tracked future fix, immediately follow this comment
 **Tracked as:** <ticket key/number — populated after CreateRelatedTicket runs, or "untracked">
 ```
 
-If the user opts to create a follow-up ticket, the **Tracked as** field gets the new ticket id. If they decline, leave it as `untracked` so future readers know the work was deliberately not tracked.
+If the user opts to create a follow-up ticket, the new ticket id is posted as a one-line `**Tracked as:** <id>` reply. If they decline, leave it as `untracked` so future readers know the work was deliberately not tracked.
 
 ## Clarification
 

@@ -4,7 +4,7 @@ Spec-Driven Development workflow for a frontend team, powered by [Claude Code](h
 
 Automates the full pipeline: **PRD &rarr; specifications &rarr; tickets (GitHub or Jira) &rarr; AI-driven development &rarr; verified PRs**.
 
-Supports three tracker modes: **GitHub-only**, **Jira-only**, and **Hybrid** (Jira tickets + GitHub for code/PRs). Configured once via `sdd/config.json`.
+Supports two tracker modes: **GitHub** (GitHub Issues + GitHub for code/PRs) and **Jira** (Jira tickets + GitHub for code/PRs). Configured once via `sdd/config.json`.
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ Supports three tracker modes: **GitHub-only**, **Jira-only**, and **Hybrid** (Ji
 | [GitHub CLI](https://cli.github.com/) | `brew install gh` then `gh auth login` | Issue creation, PR management (GitHub mode) |
 | [OpenSpec](https://github.com/Fission-AI/OpenSpec) | `npm install -g @fission-ai/openspec@latest` | Specification generation and management |
 | [jq](https://jqlang.github.io/jq/) | `brew install jq` | Used by the conventional-commit hook |
-| Jira MCP (optional) | Configure via `/sdd-setup` | Jira story and linked-task management (Jira/Hybrid mode) |
+| Jira MCP (optional) | Configure via `/sdd-setup` | Jira story and linked-task management (Jira mode) |
 
 ## Quick Start
 
@@ -70,27 +70,26 @@ You don't need to copy `sdd/` — `/sdd-setup` seeds it from its own bundle.
 
 ### 1. Bootstrap with `/sdd-setup`
 
-Run `/sdd-setup` once to initialise the `sdd/` directory, run `openspec init`, configure your tracker (GitHub, Jira, or Hybrid), and wire up any required MCPs. It is idempotent — safe to re-run.
+Run `/sdd-setup` once to initialise the `sdd/` directory, run `openspec init`, configure your tracker (GitHub or Jira), and wire up any required MCPs. It is idempotent — safe to re-run.
 
 The setup wizard will:
 1. **Detect** whether GitHub CLI and/or a Jira MCP are available
-2. **Ask** which tracker mode to use (GitHub-only / Jira-only / Hybrid)
-3. **Write** `sdd/config.json` with your tracker settings (repo, project key, board column mappings)
+2. **Ask** which tracker mode to use (GitHub / Jira)
+3. **Write** `sdd/config.json` with your tracker settings (tracker, vcs, base branch, Jira project key, status workflow, linked-task types)
 4. **Copy** seed files into `sdd/` (templates, tracker adapters, PRD templates)
 
 ### 2. Define coding standards with `/sdd-constitution`
 
-Run `/sdd-constitution` to create split constitution files in `sdd/constitution/`. These capture your tech stack, coding principles, folder structure, and quality gates. All SDD and OpenSpec skills load only the section files they need.
+Run `/sdd-constitution` to create split constitution files in `sdd/constitution/`. These capture your tech stack, coding principles, folder structure, and quality gates. SDD skills load only the section files they need.
 
-Once ratified, the constitution is automatically enforced by all skills:
+Once ratified, the constitution is automatically enforced by the SDD skills:
 
 | Skill | How it uses the constitution |
 |-------|------------------------------|
 | `/sdd-from-prd` | Generates specs, design, and tasks aligned with your stack and patterns |
 | `/sdd-staged` | Same as above + drives stage-01 setup tasks from the constitution's tech stack |
-| `/opsx:propose` | Applies stack and convention constraints to all generated artifacts |
 | `/sdd-work` | Follows principles during implementation (correct libraries, file locations, patterns) |
-| `/sdd-verify` | Adds "Constitution compliance" as a code review category — NON-NEGOTIABLE violations block, RECOMMENDED deviations are advisory |
+| `/sdd-verify` | Adds "Constitution compliance" as a code review category — NON-NEGOTIABLE violations are flagged as blocker recommendations (user decides); RECOMMENDED deviations are advisory |
 
 To update the constitution later, run `/sdd-constitution` again.
 
@@ -120,7 +119,9 @@ sdd/prds/user-auth-v1.md            (PO writes this)
 /sdd-status                          Archives change, closes parent ticket
 ```
 
-### Path B: Single Jira user story (Jira/Hybrid mode)
+v2+ increments: `sdd/prds/<feature>-v2-<scope>.md` (mini template) → `/sdd-from-prd <feature>-v2-<scope>`.
+
+### Path B: Single Jira user story (Jira mode)
 
 No PRD needed. The skill reads the Jira story and creates one board-visible Task per significant goal, each linked to the story.
 
@@ -138,7 +139,7 @@ No PRD needed. The skill reads the Jira story and creates one board-visible Task
 ### Path C: Developer-driven (no PRD)
 
 ```
-/opsx:propose "add dark mode"        Generates proposal, specs, design, tasks
+/openspec-propose "add dark mode"    Generates proposal, specs, design, tasks
         |
         v
 /sdd-create-tickets add-dark-mode   Creates tickets from the tasks
@@ -163,7 +164,7 @@ sdd/prds/my-app-v1.md              (PO writes this)
         v
 /sdd-verify
         v
-/sdd-status my-app-01-setup        Archive each completed stage
+/sdd-status                          Offers to archive each completed stage
 ```
 
 ## Commands Reference
@@ -172,27 +173,27 @@ sdd/prds/my-app-v1.md              (PO writes this)
 
 | Command | Input | What it does |
 |---------|-------|-------------|
-| `/sdd-setup` | — | One-time bootstrap: initialises `sdd/`, runs `openspec init`, configures tracker (GitHub/Jira/Hybrid), wires up MCPs. Idempotent. |
+| `/sdd-setup` | — | One-time bootstrap: initialises `sdd/`, runs `openspec init`, configures tracker (GitHub or Jira), wires up MCPs. Idempotent. |
 | `/sdd-doctor` | — | Pre-flight check: validates `sdd/config.json`, tracker connectivity, required tools, and OpenSpec state. |
 | `/sdd-constitution [name]` | Optional project name | Interactive setup: detects codebase signals, interviews for stack/conventions/quality gates, generates split files in `sdd/constitution/`. |
 | `/sdd-from-prd <feature>` | Feature name matching a file in `sdd/prds/` | Full pipeline: reads PRD and constitution, generates OpenSpec specs, runs a design challenge, then creates tickets. |
 | `/sdd-create-tickets <change>` | OpenSpec change name | Reads OpenSpec artifacts, creates tickets with GIVEN-WHEN-THEN acceptance criteria, updates task file with ticket IDs. |
-| `/sdd-tasks-from-story <JIRA-KEY>` | Jira story key | Reads Jira story, generates an OpenSpec change, creates one board-visible Task per significant goal, each linked back to the story. (Jira/Hybrid mode only.) |
+| `/sdd-tasks-from-story <JIRA-KEY>` | Jira story key | Reads Jira story, generates an OpenSpec change, creates one board-visible Task per significant goal, each linked back to the story. (Jira mode only.) |
 | `/sdd-work <ticket-id>` | GitHub issue number or Jira key | Fetches the ticket, reads constitution and linked OpenSpec change for context, researches the codebase, presents an implementation plan for approval, creates a feature branch, implements, commits. |
-| `/sdd-staged <feature>` | Feature name matching a file in `sdd/prds/` | Staged pipeline: reads PRD and constitution, proposes stages, generates per-stage OpenSpec specs, runs a design challenge, creates cross-referenced tickets. |
+| `/sdd-staged <feature>` | Feature slug (PRD at `sdd/prds/<feature>-v1.md`) | Staged pipeline: reads PRD and constitution, proposes stages, generates per-stage OpenSpec specs, runs a design challenge, creates cross-referenced tickets. |
 | `/sdd-verify [ticket-id]` | Optional ticket ID (auto-detected from branch) | Checks acceptance criteria, runs tests/lint/build, performs a code review, then creates a PR. |
-| `/sdd-status [change]` | Optional change name | Completion sweep: syncs ticket statuses into `tasks.md`, archives completed changes, closes parent tickets. |
+| `/sdd-status [--dry-run]` | — | Completion sweep: syncs ticket statuses into `tasks.md`, archives completed changes, closes parent tickets. |
 
-Every skill that writes external state accepts `--dry-run` for previewing without committing.
+All `sdd-*` skills except `/sdd-setup` accept `--dry-run` for previewing without committing; the openspec-* skills do not.
 
-### OpenSpec Commands (bundled with OpenSpec)
+### OpenSpec Commands (OpenSpec skills, SDD-customised)
 
 | Command | Input | What it does |
 |---------|-------|-------------|
-| `/opsx:propose <description>` | Feature description | Generates all OpenSpec artifacts: proposal.md, specs/ (GIVEN-WHEN-THEN), design.md, tasks.md. Includes a design challenge before declaring ready. |
-| `/opsx:apply [change]` | Optional change name | Implements tasks directly from OpenSpec (alternative to the ticket flow). |
-| `/opsx:archive [change]` | Optional change name | Moves completed change to archive, updates living specs in `openspec/specs/`. |
-| `/opsx:explore [change]` | Optional change name | Explore and understand an existing change's artifacts. |
+| `/openspec-propose <description>` | Feature description | Generates all OpenSpec artifacts: proposal.md, specs/ (GIVEN-WHEN-THEN), design.md, tasks.md. |
+| `/openspec-apply-change [change]` | Optional change name | Implements tasks directly from OpenSpec (alternative to the ticket flow). |
+| `/openspec-archive-change [change]` | Optional change name | Archives the completed change via `openspec archive`, updating living specs in `openspec/specs/`. |
+| `/openspec-explore [change]` | Optional change name | Explore and understand an existing change's artifacts. |
 
 ## Review Gates
 
@@ -200,7 +201,7 @@ The workflow has two built-in review gates:
 
 ### Design Challenge
 
-Runs automatically in `/sdd-from-prd`, `/sdd-staged`, and `/opsx:propose` — after artifacts are generated but before tickets are created. Surfaces:
+Runs automatically in `/sdd-from-prd`, `/sdd-staged`, and `/sdd-tasks-from-story` — after artifacts are generated but before tickets are created. Surfaces:
 - Key assumptions the design makes
 - Risks and pitfalls (over-engineering, edge cases, security, performance)
 - Simplification opportunities
@@ -216,31 +217,13 @@ Runs automatically in `/sdd-verify` after acceptance criteria and CI checks. Eva
 - **Performance**: unnecessary re-renders, missing memoisation, N+1 fetches
 - **Error handling**: system boundaries covered, error states in UI
 - **Design alignment**: matches `design.md` if an OpenSpec change is linked
-- **Constitution compliance**: NON-NEGOTIABLE violations block; RECOMMENDED deviations are advisory
+- **Constitution compliance**: NON-NEGOTIABLE violations are flagged as blocker recommendations (user decides); RECOMMENDED deviations are advisory
 
 Checklist: `sdd/templates/code-review-checklist.md`
 
 ## Tracker Configuration
 
-`sdd/config.json` (created by `/sdd-setup`, excluded from source control) controls which tracker is active. `sdd/config.example.json` is committed as a reference.
-
-```json
-{
-  "tracker": "github",        // "github" | "jira" | "hybrid"
-  "github": {
-    "repo": "owner/repo"
-  },
-  "jira": {
-    "projectKey": "TT",
-    "boardColumns": {
-      "todo": "To Do",
-      "in_progress": "In Progress",
-      "in_review": "Code Review",
-      "done": "Done"
-    }
-  }
-}
-```
+`sdd/config.json` (created by `/sdd-setup`, committed; contains no secrets) controls which tracker is active. See `sdd/config.example.json` for the full shape.
 
 Tracker adapters: `sdd/trackers/protocol.md`, `sdd/trackers/github.md`, `sdd/trackers/jira.md`.
 
@@ -326,7 +309,7 @@ The agent will:
 /sdd-verify
 ```
 
-The agent checks acceptance criteria, runs CI, performs the code review, then — if everything passes — pushes the branch and creates a PR with `Closes #<number>` (GitHub) or the Jira transition comment (Jira/Hybrid).
+The agent checks acceptance criteria, runs CI, performs the code review, then — if everything passes — pushes the branch and creates a PR. GitHub: the issue is closed when the PR opens. Jira: the PR body says `Resolves <KEY>` and the ticket moves to In Review; `/sdd-status` moves it to Done after merge.
 
 ### Completion and Archiving
 
@@ -334,7 +317,7 @@ The agent checks acceptance criteria, runs CI, performs the code review, then �
 /sdd-status
 ```
 
-After all tickets for a change are merged, run `/sdd-status` to reconcile `tasks.md` against authoritative ticket statuses (`/sdd-verify` already checked off each work item's own section inside its PR), archive the OpenSpec change, and close the parent Jira story (Jira/Hybrid mode).
+After all tickets for a change are merged, run `/sdd-status` to reconcile `tasks.md` against authoritative ticket statuses (`/sdd-verify` already checked off each work item's own section inside its PR), archive the OpenSpec change, and close the parent Jira story (Jira mode).
 
 ## Project Structure
 
@@ -367,14 +350,14 @@ sdd-workflow/
 |-- sdd/
 |   |-- README.md                          # Canonical SDD reference (layout, modes, decision tree)
 |   |-- config.example.json               # Tracker config template (commit this)
-|   |-- config.json                        # Live tracker config — DO NOT COMMIT (gitignored)
+|   |-- config.json                        # Live tracker config
 |   |-- prd-template.md                   # PRD template for the PO (greenfield / v1)
 |   |-- prd-template-mini.md              # Mini PRD template for v2+ increments
 |   |-- constitution/                      # Project coding standards (generated by /sdd-constitution)
 |   |   +-- .gitkeep
 |   |-- prds/                              # PRD files go here
 |   |   +-- .gitkeep
-|   |-- tasks/                             # Task mapping files (gitignored or project-specific)
+|   |-- tasks/                             # Ticket mapping files (commit — /sdd-status reads them)
 |   |   +-- .gitkeep
 |   |-- apis/                              # Swagger/OpenAPI source files (optional)
 |   |   +-- .gitkeep
@@ -424,7 +407,7 @@ Feature branches are cut from `develop` and merged back to `develop` via PR. Onl
 
 - Title follows conventional commit format
 - Body includes: Summary, Changes, Acceptance Criteria (all checked), Testing notes
-- Auto-closes the issue via `Closes #<number>` (GitHub) or Jira transition comment (Jira/Hybrid)
+- GitHub: issue closed when the PR opens. Jira: `Resolves <KEY>`, moved to In Review; `/sdd-status` moves it to Done after merge
 - Merging is always a human decision
 
 ## Customisation
@@ -459,8 +442,8 @@ Edit `.claude/hooks/validate-commit-msg.sh` to change the allowed commit types o
 | Skills don't appear as slash commands | Restart Claude Code. Skills are discovered on startup. |
 | Commit blocked by hook | Your commit message doesn't follow conventional commits. Use `type(scope): description` format. |
 | `/sdd-doctor` reports tracker unreachable | Check `sdd/config.json` credentials and that the relevant MCP is running. |
-| `/sdd-create-tickets` says "no tasks.md" | Run `/opsx:propose` or `/sdd-from-prd` first to generate the specs. |
+| `/sdd-create-tickets` says "no tasks.md" | Run `/openspec-propose` or `/sdd-from-prd` first to generate the specs. |
 | `/sdd-work` warns about open dependencies | A blocking ticket hasn't been closed yet. Close it or proceed with caution. |
 | `/sdd-verify` reports FAIL on criteria | Fix the failing criteria before the PR can be created. |
 | `/sdd-staged` suggests using `/sdd-from-prd` | Your PRD is too small for staging. Use `/sdd-from-prd` or override if you still want stages. |
-| `/sdd-tasks-from-story` not available | Requires Jira or Hybrid tracker mode. Check `sdd/config.json`. |
+| `/sdd-tasks-from-story` not available | Requires Jira tracker mode. Check `sdd/config.json`. |

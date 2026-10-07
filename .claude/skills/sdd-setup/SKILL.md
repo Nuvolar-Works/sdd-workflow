@@ -22,9 +22,8 @@ Walk through these checks and build a `state` summary. Don't act yet.
 | Constitution (split) | `sdd/constitution/index.md` | file exists? |
 | Constitution (legacy) | `docs/constitution.md` | file exists? |
 | PRD template | `sdd/prd-template.md` | file exists? |
-| Tracker recipes | `sdd/trackers/protocol.md`, `sdd/trackers/github.md`, `sdd/trackers/jira.md` | files exist? |
-| Shared templates | `sdd/templates/{pr-body,code-review-checklist,design-challenge,given-when-then-examples,jira-task-decomposition}.md` | files exist? |
-| OpenSpec | `openspec/config.yaml` | file exists? |
+| Tracker recipes + shared templates | every `.claude/skills/sdd-setup/references/seed/{trackers,templates}/*.md` has a counterpart under `sdd/` | files exist? |
+| OpenSpec | `openspec/specs/` | dir exists? |
 | GitHub auth | `gh auth status` | exit code 0? |
 | Atlassian Rovo MCP | a quick test call | authed? |
 | `.mcp.json` | `.mcp.json` | file exists? |
@@ -38,7 +37,7 @@ For each missing piece, ask the user before acting. Run them in this order:
 
 ### 2.1 Create `sdd/` folder hierarchy
 
-If `sdd/` is missing:
+Always run (no-clobber; fills in any missing files):
 
 ```bash
 mkdir -p sdd/{constitution,prds,apis,tasks,trackers,templates}
@@ -60,15 +59,17 @@ cp -n "$SEED/templates/"*.md sdd/templates/
 
 ### 2.2 Initial config.json
 
-If `sdd/config.json` is missing, copy `sdd/config.example.json` to `sdd/config.json`. The user will customize it in 2.4.
+Do not create `sdd/config.json` here; write it at the end of 2.4 from the answers, using `config.example.json` only as the shape.
 
 ### 2.3 Run `openspec init`
 
-If `openspec/config.yaml` is missing:
+If `openspec/specs/` is missing (`[ -d openspec/specs ]` fails):
 
 ```bash
-openspec init
+openspec init --tools none
 ```
+
+`--tools none` creates `openspec/{specs,changes}` without regenerating the SDD-customised `.claude/skills/openspec-*` skills.
 
 If `openspec` is not on the PATH, tell the user to install it (`npm install -g @fission-ai/openspec@latest`) and skip this step. The rest of setup still works; OpenSpec can be initialised later.
 
@@ -77,8 +78,7 @@ If `openspec` is not on the PATH, tell the user to install it (`npm install -g @
 Use AskUserQuestion to ask which tracker:
 
 - **GitHub** — tickets and code in GitHub. Default for most projects.
-- **Jira** — tickets in Jira, code in GitHub. Use when product management is in Jira.
-- **Hybrid (Jira tickets + GitHub VCS)** — same as Jira; the difference shows up in `sdd/config.json` as `tracker: "jira"` + `vcs: "github"` (which is the Jira default anyway).
+- **Jira** — tickets in Jira, code and PRs in GitHub. Use when product management is in Jira.
 
 #### GitHub branch
 
@@ -92,13 +92,12 @@ Use AskUserQuestion to ask which tracker:
    - "What base branch should feature PRs target? (`develop` recommended; some projects use `main`)"
    - Default: check `git branch -a` for `develop` first, then `main`. Pre-fill the answer.
 
-3. Update `sdd/config.json`:
+3. Write `sdd/config.json`:
    ```json
    {
      "tracker": "github",
      "vcs": "github",
      "github": {
-       "remote": "origin",
        "default_base_branch": "<answer>"
      }
    }
@@ -106,19 +105,19 @@ Use AskUserQuestion to ask which tracker:
 
 #### Jira branch
 
-1. Trigger Atlassian Rovo MCP authentication via `mcp__claude_ai_Atlassian_Rovo__authenticate`. If a flow is already in progress, use `mcp__claude_ai_Atlassian_Rovo__complete_authentication` instead.
+1. Verify `gh auth status` (PRs always go through GitHub); if it fails, tell the user to run `gh auth login`. Then, if the Atlassian Rovo MCP is unauthenticated, trigger its `authenticate` tool (or `complete_authentication` if a flow is already in progress).
 
-2. Once auth completes, list accessible Jira sites/projects via the appropriate MCP tool. Present them to the user. Ask them to confirm which site (e.g. `your-org.atlassian.net`) and which project key (e.g. `TT`).
+2. Once auth completes, list accessible Jira sites (`getAccessibleAtlassianResources`) and projects (`getVisibleJiraProjects`). Present them to the user. Ask them to confirm which site (e.g. `your-org.atlassian.net`) and which project key (e.g. `TT`).
 
 3. Try to discover the OpenSpec "Source" custom-field id by listing custom fields on the chosen project. If exactly one field name matches `Source` or `OpenSpec`, use it. Otherwise present the candidates and ask the user. If none exist, ask whether the user wants to create one (Jira admin permissions required) — if not, leave `source_field` as `null` and skills will fall back to a description footer.
 
-4. Discover the Jira workflow transition names for In Progress / In Review / Done. List the transitions available from the project's default issue type. Ask the user to confirm the mapping; pre-fill with the names returned by Jira.
+4. Discover the Jira workflow **target status names** for In Progress / In Review / Done (`status_workflow` values are status names, not transition names; skills pick the transition whose `to.name` matches). List the statuses available for the project's default issue type. Ask the user to confirm the mapping; pre-fill with the names returned by Jira.
 
 5. Configure the **linked-task model** keys (`/sdd-tasks-from-story` creates one board-visible Task per goal, linked to the story — never hidden Sub-tasks):
    - `child_issue_type`: list the project's issue types (`getJiraProjectIssueTypesMetadata`) and pick a non-subtask, hierarchy-level-0 type — `Task` if present. Confirm with the user.
    - `child_link_type`: list available link types (`getIssueLinkTypes`) and prefer a decomposition-style link in this order: `Work item split` (`split to`/`split from`) → `Relates`. Confirm with the user, defaulting to the first match found.
 
-6. Update `sdd/config.json` with the Jira section (including `child_issue_type` and `child_link_type`), plus `vcs: "github"` and the GitHub `default_base_branch` answer (still ask for it — even Jira-tracker projects use GitHub for code).
+6. Write `sdd/config.json` with the Jira section (including `child_issue_type` and `child_link_type`), plus `vcs: "github"` and the GitHub `default_base_branch` answer (still ask for it — even Jira-tracker projects use GitHub for code).
 
 ### 2.5 MCP Wiring
 
@@ -132,11 +131,7 @@ For each selected MCP, append the MCP server entry to `.mcp.json` (creating the 
 
 Skip recommending the `code-review` plugin: prior session noted it consumed roughly half a session's allowance for one PR, and the inline review in `/sdd-verify` covers the same ground.
 
-### 2.6 Update `.gitignore`
-
-Append `sdd/config.local.json` if not already present.
-
-### 2.7 Constitution
+### 2.6 Constitution
 
 Check `sdd/constitution/index.md`:
 
@@ -159,7 +154,6 @@ Print a concise summary table:
 | MCPs | ✓ <list> |
 | OpenSpec | ✓ initialised (or ⚠ pending — install openspec) |
 | Constitution | ✓ present (or ⚠ pending — run /sdd-constitution) |
-| .gitignore | ✓ updated |
 
 Next steps:
 - (if no constitution) Run /sdd-constitution to define project standards.

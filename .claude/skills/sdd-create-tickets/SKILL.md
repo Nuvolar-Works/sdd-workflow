@@ -25,7 +25,7 @@ You are creating tracker tickets from an OpenSpec change's artifacts. The active
 
 ## Phase 0.5: Re-run Safety
 
-5. Locate the change directory at `openspec/changes/$ARGUMENTS/`. If it does not exist, tell the user to run `/opsx:propose` first and stop.
+5. Locate the change directory at `openspec/changes/$ARGUMENTS/`. If it does not exist, tell the user to run `/openspec-propose` first and stop.
 
 6. Detect existing tickets:
    - Read `openspec/changes/$ARGUMENTS/tasks.md`. Scan section headers for ticket-id annotations (`## N. <name> (#42)` or `## N. <name> [TT-457]`). Capture (section-number → id) pairs.
@@ -49,7 +49,7 @@ You are creating tracker tickets from an OpenSpec change's artifacts. The active
    Ask: "Continue (skip existing, create only what's missing) / Regenerate (overwrite — show diff first) / Abort?" Default Continue.
 
    - **Continue**: pass through the captured ids to Phase 1; the protocol's re-run hook skips create for sections that already have ids.
-   - **Regenerate**: per-ticket diff between existing state and what the new payload would create; require explicit `yes` per ticket before deletion + recreation. Old ids in the mapping are marked `replaced by <new id>`.
+   - **Regenerate**: per-ticket diff between existing state and what the new payload would create; require explicit `yes` per ticket before replacing it: create the replacement, then `CloseTicket(<old>, "Replaced by <new>")`. Old ids are reported in the summary as `replaced by <new id>`.
    - **Abort**: stop.
 
    When `DRY_RUN`: still run the detection. The Continue / Regenerate / Abort prompt still fires, but the skill never actually destroys or recreates — it prints what would happen.

@@ -35,28 +35,12 @@ gh issue create \
   --title "<type>: <title>" \
   --label "<comma-separated-labels>" \
   --body "$(cat <<'ISSUE_EOF'
-## Description
-<description>
-
-## Tasks
-- [ ] <subtask 1>
-- [ ] <subtask 2>
-
-## Acceptance Criteria
-- [ ] <criterion 1>
-- [ ] <criterion 2>
-
-## Implementation Hints
-<hints>
-
-## Dependencies
-<comma-separated issue refs, or "None">
-
----
-Source: <openspec/changes/<change>/tasks.md>
+<payload.body>
 ISSUE_EOF
 )"
 ```
+
+`payload.body` is the full body built by `sdd/templates/ticket-creation-protocol.md` Step 4 (including caller additions like Stage Context and the `Source:` footer). Pass it verbatim; do not re-template.
 
 Capture the URL printed by `gh issue create` and parse the issue number from the URL tail.
 
@@ -115,6 +99,8 @@ Returns an ordered array of `{author: {login}, createdAt, body}`. Map to the pro
 
 GitHub has no native typed issue links. Emulate via body footer + back-comment:
 
+0. Call `EnsureLabel("follow-up")`.
+
 1. Build the new issue body. Append a footer line based on `link_type`:
    - `blocks`        → `Blocks #<related_id>`
    - `is_blocked_by` → `Blocked by #<related_id>`
@@ -171,7 +157,7 @@ gh issue list \
 
 `<query>` is GitHub search syntax. Examples:
 - `"label:stage-05-time-tracking"` — all tickets in a stage.
-- `"label:follow-up linked:#42"` — follow-ups of #42 (works only when bodies were created with `Follow-up of #N` footer; combine with `--search "in:body Follow-up of #42"` for body grep).
+- `"label:follow-up in:body \"Follow-up of #42\""` — follow-ups of #42 (matches the `Follow-up of #N` footer written by `CreateRelatedTicket`).
 - `"assignee:@me state:open"` — your open work.
 
 Map each issue in the JSON array to the protocol shape:
@@ -181,6 +167,7 @@ Map each issue in the JSON array to the protocol shape:
 - `labels` → `labels[].name`
 - `assignees` → `assignees[].login`
 - `status` → `state` (`OPEN` / `CLOSED`)
+- `parent` → parsed from a `Parent: #N` line in `body`, as in `FetchTicket`.
 
 Returns the full result set in one round-trip. Default `limit` of 100 is enough for most projects; pass higher when needed.
 
@@ -209,6 +196,14 @@ git push -u origin <name>
 
 ## CreatePR(payload)
 
+Before creating, check whether the current branch already has a PR (read-only, may be run inline):
+
+```bash
+gh pr view --json number,url,state
+```
+
+If it is `OPEN`, skip `CreatePR` and `LinkTicketToPR` and reuse that PR. If it is `MERGED` or `CLOSED`, stop and tell the user.
+
 ```bash
 gh pr create \
   --title "<type>(<scope>): <description>" \
@@ -236,32 +231,32 @@ Capture the PR URL from output. Extract the PR number from the URL tail.
 
 ## LinkTicketToPR(ticket, pr)
 
-For GitHub-only flows, the `Closes #<ticket>` line in the PR body handles linkage on merge. Still call `CloseTicket(ticket, "Resolved in PR #<pr>.")` immediately after PR creation because the PR targets `develop`, not the default branch.
+Call `CloseTicket(ticket, "Resolved in PR #<pr>.")` immediately after PR creation. The PR targets `develop`, not the default branch, so `Closes #<ticket>` does not auto-close the issue.
 
 ## GetLinkedPR(id)
 
-Resolve the PR linked to a closed issue. Used by `/sdd-status` Phase 5 Class A to decide whether a change is ready to archive — relying on comment-text scans alone (`"Resolved in PR #<n>"`) is brittle if the comment was edited or never posted.
+Resolve the PR linked to a closed issue. Used by `/sdd-status` Phase 5 Class A to decide whether a change is ready to archive.
 
 Two-tier lookup:
 
-1. **API (preferred)** — query GitHub's GraphQL link via `gh`:
-   ```bash
-   gh issue view <id> --json closedByPullRequestsReferences \
-     -q '.closedByPullRequestsReferences[]?.number'
-   ```
-   `closedByPullRequestsReferences` is populated for any PR that mentions `Closes #<id>` / `Fixes #<id>` / `Resolves #<id>` in its body, regardless of whether the issue was auto-closed or manually closed. This is the primary path because `/sdd-verify` always writes `Closes #<id>` into the PR body.
-
-2. **Fallback** — when the API returns empty (PR body lacks closing keyword, or older PRs created before the convention), scan the issue's comments for the canonical closing comment:
+1. **Closing comment (primary)** — scan the issue's comments for the canonical comment posted by `LinkTicketToPR`:
    ```bash
    gh issue view <id> --json comments \
      --jq '.comments | map(select(.body | test("Resolved in PR #([0-9]+)"))) | last'
    ```
    Extract the PR number from the matched body via regex `Resolved in PR #([0-9]+)`.
 
+2. **API (fallback)** — when no closing comment is found:
+   ```bash
+   gh issue view <id> --json closedByPullRequestsReferences \
+     -q '.closedByPullRequestsReferences[]?.number'
+   ```
+   `closedByPullRequestsReferences` is only populated for PRs into the default branch, so it is usually empty for PRs that target `develop`.
+
 For each candidate PR number, check merge state:
 
 ```bash
-gh pr view <pr-number> --json state,mergedAt -q '.state'
+gh pr view <pr-number> --json state,mergedAt -q '{state, mergedAt}'
 ```
 
 Return `{ pr_number, state, merged_at }`. State is one of `MERGED`, `CLOSED` (not merged), `OPEN`. If both tiers yield nothing, return `null` — the caller treats that as "closed without merged PR — needs manual review."

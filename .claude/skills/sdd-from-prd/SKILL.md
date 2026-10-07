@@ -51,7 +51,7 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
    Ask: "Continue (skip existing artifacts/tickets, fill in only what's missing) / Regenerate (per-file diff before overwrite) / Abort?" Default Continue.
 
    - **Continue**: skip artifact generation for files that already exist; the protocol's re-run hook skips ticket creation for sections that already have ids.
-   - **Regenerate**: per-file diff for each artifact (proposal.md, design.md, each spec, tasks.md). Per-file `yes` confirmation before overwrite. For tickets, per-ticket diff between current body and what would be generated, with explicit confirmation before deletion + recreation. Old ticket ids are marked `replaced by <new id>` in the mapping.
+   - **Regenerate**: per-file diff for each artifact (proposal.md, design.md, each spec, tasks.md). Per-file `yes` confirmation before overwrite. For tickets, per-ticket diff between current body and what would be generated, with explicit confirmation before replacing: create the replacement, then `CloseTicket(<old>, "Replaced by <new>")`. Old ids are reported in the summary as `replaced by <new id>`.
    - **Abort**: stop.
 
    When `DRY_RUN`: still run detection and prompt; the skill never destroys or recreates — it prints what would happen.
@@ -61,11 +61,12 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
 ## Phase 1: Read and Validate the PRD
 
 9. Read `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/<feature-slug>.md`). If neither exists, tell the user and stop.
-10. Detect template style: full (`prd-template.md`) or mini (`prd-template-mini.md`). The mini template omits Executive Summary, UI/UX Notes, Technical Considerations, Open Questions, and Non-Goals — that is by design, do not warn about missing sections.
+10. Detect template style: full (`prd-template.md`) or mini (`prd-template-mini.md`). The mini template omits UI/UX Notes, Technical Considerations, Open Questions, and Non-Goals — that is by design, do not warn about missing sections.
 11. Check for an `## Open Questions` section. If unresolved questions exist, present them and ask whether to proceed or resolve them first.
 12. Extract PRD content: Problem Statement, Goals & Non-Goals, User Stories, UI/UX Notes (if present), Technical Considerations (if present), Dependencies.
 13. Check for an `## API Contract` section.
     - If absent or empty, skip API integration work entirely.
+    - If the section lists endpoints inline (mini template) instead of a source file/URL, use those bullets as the **API Summary** and skip the rest of this step.
     - If present, extract the reference (file path or URL).
       - Local file: read it. If not found, warn and ask whether to proceed without it.
       - URL: fetch via WebFetch. If fetch fails, warn and ask whether to proceed without it.
@@ -85,12 +86,12 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
 
 15. `CHANGE_NAME = <feature-slug>`.
 
-16. If Phase 0.5's mode is **Continue** and the change already exists, skip the `openspec new change` call. Otherwise:
+16. If `openspec/changes/$CHANGE_NAME/` already exists, skip the `openspec new change` call (any mode). Otherwise:
     ```bash
     openspec new change "$CHANGE_NAME"
     ```
 
-17. If an API Contract was found, copy the source into the change folder (`api-contract.yaml` or `.json`). This file is reference material; it is NOT processed by openspec.
+17. If an API Contract source file/URL was found, copy the source into the change folder (`api-contract.yaml` or `.json`). This file is reference material; it is NOT processed by openspec.
 
 18. Get the artifact build order:
     ```bash
@@ -108,7 +109,7 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
 
     d. Create the artifact using the `template` from instructions. Map PRD content to artifact sections:
        - **proposal.md**: Problem → problem, Goals → objectives, Non-Goals → exclusions, User Stories → user needs. Mention API integration scope if relevant.
-       - **specs/*.md**: User Stories → GIVEN-WHEN-THEN scenarios. Reference `sdd/templates/given-when-then-examples.md` for shape and edge-case categories. For API stories, include integration scenarios with endpoints, request/response shapes, error paths.
+       - **specs/<capability>/spec.md**: User Stories → GIVEN-WHEN-THEN scenarios. Reference `sdd/templates/given-when-then-examples.md` for shape and edge-case categories. For API stories, include integration scenarios with endpoints, request/response shapes, error paths.
        - **design.md**: Technical Considerations → architecture, Dependencies → integration points, UI/UX → component structure. Add "API Integration" subsection if applicable.
        - **tasks.md**: derived from specs and design — atomic, vertically-sliced, AC-bound. Include API tasks if applicable.
 

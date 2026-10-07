@@ -35,12 +35,12 @@ Used by `/sdd-verify` for the code-review step. Each section produces either CLE
 - Do the changes match the architecture described? Components, file placements, integration points?
 - Flag deviations as either justified (explain why) or unjustified (recommend reverting to design).
 
-## 6. Constitution compliance (only if `sdd/constitution/` exists)
+## 6. Constitution compliance (only if `sdd/constitution/index.md` exists)
 
 - Read `sdd/constitution/principles.md`. For each NON-NEGOTIABLE principle, check the changed code. Violations are reported as **blocker recommendations** (still the user's call but flagged loudly).
 - For each RECOMMENDED principle, check the changed code. Deviations are reported as advisory.
-- For UI changes, also load `sdd/constitution/design-system.md` and check colour tokens, font, shadow scale, border radius, dark-mode support.
-- For data-shape changes, also load `sdd/constitution/utilities.md` (e.g. query param serialization rules).
+- Only if changed files include UI components or route files, also load `sdd/constitution/design-system.md` (if the file exists) and check colour tokens, font, shadow scale, border radius, dark-mode support.
+- Only if changed files touch the API client or shared data-shape utilities, also load `sdd/constitution/utilities.md` (if the file exists; e.g. query param serialization rules).
 
 ## Output shape
 

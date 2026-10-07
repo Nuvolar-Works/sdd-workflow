@@ -63,24 +63,15 @@ Archive a completed change in the experimental workflow.
    - If changes needed: "Sync now (recommended)", "Archive without syncing"
    - If already synced: "Archive now", "Sync anyway", "Cancel"
 
-   If user chooses sync, use Task tool (subagent_type: "general-purpose", prompt: "Use Skill tool to invoke openspec-sync-specs for change '<name>'. Delta spec analysis: <include the analyzed delta spec summary>"). Proceed to archive regardless of choice.
+   Record the choice.
 
 5. **Perform the archive**
 
-   Create the archive directory if it doesn't exist:
    ```bash
-   mkdir -p openspec/changes/archive
+   openspec archive "<name>" --yes
    ```
 
-   Generate target name using current date: `YYYY-MM-DD-<change-name>`
-
-   **Check if target already exists:**
-   - If yes: Fail with error, suggest renaming existing archive or using different date
-   - If no: Move the change directory to archive
-
-   ```bash
-   mv openspec/changes/<name> openspec/changes/archive/YYYY-MM-DD-<name>
-   ```
+   Add `--skip-specs` if the user chose "Archive without syncing" or "Archive now" (already synced); stop on "Cancel". The CLI applies the delta specs to `openspec/specs/` and moves the change to `openspec/changes/archive/YYYY-MM-DD-<name>/`. If it fails (e.g. the target already exists), show the error and stop.
 
    **Archive the SDD mapping (if present):**
 
@@ -90,7 +81,7 @@ Archive a completed change in the experimental workflow.
      ```bash
      mv sdd/tasks/<name>.md sdd/tasks/<name>.archived.md
      ```
-   - **Leave the mapping** — for cases where the user wants `/sdd-status` to surface the change in a "stale mapping" warning until they handle it manually.
+   - **Leave the mapping** — the user will handle it manually.
 
    If `sdd/tasks/<name>.md` does not exist, skip this prompt entirely.
 
@@ -122,7 +113,5 @@ All artifacts complete. All tasks complete.
 - Always prompt for change selection if not provided
 - Use artifact graph (openspec status --json) for completion checking
 - Don't block archive on warnings - just inform and confirm
-- Preserve .openspec.yaml when moving to archive (it moves with the directory)
 - Show clear summary of what happened
-- If sync is requested, use openspec-sync-specs approach (agent-driven)
 - If delta specs exist, always run the sync assessment and show the combined summary before prompting

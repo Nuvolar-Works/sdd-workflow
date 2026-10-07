@@ -12,21 +12,23 @@ Before any operation, read `sdd/config.json` and extract:
 - `jira.issue_type_map` (maps SDD type → Jira issue type name)
 - `jira.child_issue_type` (the issue type for goal-level work items created under a story — a board-visible type such as `Task`, **not** a Sub-task type)
 - `jira.child_link_type` (the issue-link type used to attach each work item to its parent story — e.g. `Work item split` where available, else `Relates`)
-- `jira.status_workflow` (maps SDD status → Jira transition name)
+- `jira.status_workflow` (maps SDD status → target Jira status name)
 - `jira.source_field` (custom field id for the OpenSpec source link, or `null` to fall back to a comment)
+
+Pass `jira.site` as `cloudId` on every call.
 
 ## VerifyAuth
 
-Use `mcp__claude_ai_Atlassian_Rovo__authenticate` (or `complete_authentication` if a flow is already in progress). If the MCP cannot list accessible resources for the configured site, tell the user to re-run `/sdd-setup` and stop.
+Call `getAccessibleAtlassianResources` and confirm `jira.site` is listed. If the server is unauthenticated, use its `authenticate` tool or tell the user to re-run `/sdd-setup`, then stop.
 
 ## FetchTicket(id)
 
 `id` is a Jira issue key (e.g. `TT-456`).
 
-Use the Atlassian Rovo `get_issue` tool (or equivalent) with the issue key. Map the returned payload to the protocol shape:
+Call `getJiraIssue` with the issue key and `fields: ["summary","description","status","issuetype","labels","assignee","parent","issuelinks"]`, plus `customfield_<source_field>` when `jira.source_field` is configured (the default field set omits `parent` and `issuelinks`), and `responseContentFormat: "markdown"`. Map the returned payload to the protocol shape:
 - `id` → `key`
 - `title` → `fields.summary`
-- `body` → `fields.description` (rendered to plain text)
+- `body` → `fields.description` (rendered as Markdown; ADF headings → `## `)
 - `labels` → `fields.labels`
 - `assignees` → `[fields.assignee.displayName]` if present
 - `status` → `fields.status.name`
@@ -34,23 +36,16 @@ Use the Atlassian Rovo `get_issue` tool (or equivalent) with the issue key. Map 
   1. `fields.parent.key` if present (legacy Jira Sub-tasks created before the linked-task model, or items still parented under an Epic).
   2. Otherwise scan `fields.issuelinks` for a link whose `type.name` equals `jira.child_link_type` and return the linked counterpart's key — i.e. whichever of `inwardIssue` / `outwardIssue` is populated on that entry (Jira shows the *other* end relative to this issue, so the populated side is the parent story). For `Work item split` there is exactly one such link per work item (to its story). If several links of that type exist (more likely with the non-directional `Relates` fallback), prefer the counterpart whose issue type matches the story type from `jira.issue_type_map["feat"]`.
   3. If neither resolves, `parent` is unset.
-- `Source` → `fields[<source_field>]` if `jira.source_field` is configured; otherwise scan `fields.description` for an `openspec/changes/<name>/` substring.
+- `Source` → `fields.customfield_<source_field>` if `jira.source_field` is configured; otherwise scan `fields.description` for an `openspec/changes/<name>/` substring.
 
 ## CreateTicket(payload)
 
-Use the Atlassian Rovo `create_issue` tool with:
-- `project` → `jira.project_key`
+Call `createJiraIssue` with:
+- `projectKey` → `jira.project_key`
 - `summary` → `<type>: <title>`
-- `issuetype` → `jira.issue_type_map[<type>]`
-- `labels` → `payload.labels`
-- `description` → multi-paragraph body containing:
-  - Description (from payload)
-  - Tasks list
-  - Acceptance Criteria
-  - Implementation Hints
-  - Dependencies (Jira keys)
-  - A trailing `Source: openspec/changes/<change>/tasks.md` line.
-- `customfield_<source_field>` → if `jira.source_field` is set, populate it with the Source URL/path. Otherwise rely on the description footer.
+- `issueTypeName` → `jira.issue_type_map[<type>]`
+- `description` → `payload.body` verbatim (the full body built by `sdd/templates/ticket-creation-protocol.md` Step 4, including its `Source:` footer; do not re-template).
+- `additional_fields` → `{ "labels": payload.labels }`, plus `customfield_<source_field>` set to the Source URL/path if `jira.source_field` is set. Otherwise rely on the description footer.
 
 Capture the returned issue key.
 
@@ -60,25 +55,27 @@ Creates one board-visible **work-item ticket** per payload and links each back t
 
 For each payload:
 
-1. **Create the work item.** Call `create_issue` with:
-   - `project` → `jira.project_key`
-   - `issuetype` → `jira.child_issue_type`
-   - `summary`, `description`, `labels` — as in `CreateTicket`.
+1. **Create the work item.** Call `createJiraIssue` with:
+   - `projectKey` → `jira.project_key`
+   - `issueTypeName` → `jira.child_issue_type`
+   - `summary`, `description`, `additional_fields` — as in `CreateTicket`.
    - Do **not** set `parent` (the work item is not a sub-task or epic child; the story is at the same hierarchy level).
    Capture the returned key (`<child_key>`).
 
-2. **Link it to the story.** Call `link_issue` (`createIssueLink`) with:
+2. **Link it to the story.** Call `createIssueLink` with:
    - `type` → `jira.child_link_type`
    - `inwardIssue` → `parent_id` (the story)
    - `outwardIssue` → `<child_key>` (the new work item)
 
-   This MCP's `createIssueLink` reads as **`inwardIssue <outward-phrase> outwardIssue`** (per its own example, "A is blocked by B" → `inwardIssue: B, outwardIssue: A`, i.e. B blocks A). For the default `Work item split` type (`outward: "split to"`, `inward: "split from"`) this yields **story `split to` work item** / **work item `split from` story** — the intended decomposition direction. If the configured link type is non-directional (e.g. `Relates`), direction is immaterial. Verify the rendered direction on first use and swap inward/outward if the instance inverts it.
+   This MCP's `createIssueLink` reads as **`inwardIssue <outward-phrase> outwardIssue`** (per its own example, "A is blocked by B" → `inwardIssue: B, outwardIssue: A`, i.e. B blocks A). For the `Work item split` type (preferred by `/sdd-setup` when available; `outward: "split to"`, `inward: "split from"`) this yields **story `split to` work item** / **work item `split from` story** — the intended decomposition direction. If the configured link type is non-directional (e.g. `Relates`), direction is immaterial. Verify the rendered direction on first use and swap inward/outward if the instance inverts it.
+
+   If the link call fails, still return `<child_key>` and report it as created-but-unlinked so the user can add the link manually.
 
 Return the list of `<child_key>` values. Each work item now shows on the board and carries a visible link to its parent story.
 
 ## UpdateTicketStatus(id, status)
 
-Resolve the Jira transition name from `jira.status_workflow[<status>]`. Use the Atlassian Rovo `transition_issue` tool with the issue key and transition name.
+Call `getTransitionsForJiraIssue`; pick the transition whose `to.name` equals `jira.status_workflow[<status>]` (fall back to a match on the transition `name`); pass its `id` to `transitionJiraIssue`.
 
 If the transition isn't available from the current status (Jira workflows can have gates), report the available transitions and stop — don't force.
 
@@ -89,37 +86,37 @@ If the transition isn't available from the current status (Jira workflows can ha
 
 ## CommentOnTicket(id, body)
 
-Use the Atlassian Rovo `add_comment` tool with the issue key and body. Body is plain text or Atlassian Document Format (ADF); plain markdown-style headings (`## Decision`, `## Blocker`, etc.) render acceptably in the Jira UI.
+Call `addCommentToJiraIssue` with the issue key and body. Body is plain text or Atlassian Document Format (ADF); plain markdown-style headings (`## Decision`, `## Blocker`, etc.) render acceptably in the Jira UI.
 
 ## FetchComments(id, limit?)
 
-Use the Atlassian Rovo comment-listing tool (`list_comments` / `get_issue_comments` depending on MCP version) with the issue key. Default to the most recent 30 comments; pass `limit = "all"` to retrieve the full thread.
+Call `getJiraIssue` with the issue key and `fields: ["comment"]`; read `fields.comment.comments`. Default to the most recent 30 comments; pass `limit = "all"` to retrieve the full thread.
 
 Map each Jira comment to the protocol shape:
 - `author` → `author.displayName` (fall back to `author.accountId` if displayName is missing)
 - `created_at` → `created`
 - `body` → `body` rendered to plain text (Jira comments may be in ADF; flatten to text for the heuristic filters used by the SDD skills)
 
-Order oldest-first. Cap at `limit`. If the Jira API supports pagination natively, fetch the most recent N rather than fetching all and slicing.
+Order oldest-first. Cap at `limit` by keeping the most recent N.
 
 ## AssignTicket(id, user)
 
-Use the Atlassian Rovo `assign_issue` tool. For `@me`, resolve via `get_current_user` first to get the account id.
+Call `editJiraIssue` with `fields: { "assignee": { "accountId": <id> } }`. For `@me`, resolve the account id via `atlassianUserInfo` first.
 
 ## CreateRelatedTicket(payload, related_id, link_type)
 
 Two-step operation:
 
-1. Create the new ticket via the Atlassian Rovo `create_issue` tool. Use the same payload shape as `CreateTicket` (top-level ticket — no `parent`). The new ticket's `issuetype` should reflect its nature (typically `Task` or the type derived from `payload.type`); avoid using the sub-task type here, since this is a standalone tracked item, not a child of `related_id`.
+1. Create the new ticket via `createJiraIssue`. Use the same payload shape as `CreateTicket` (top-level ticket — no `parent`). The new ticket's `issuetype` should reflect its nature (typically `Task` or the type derived from `payload.type`); avoid using the sub-task type here, since this is a standalone tracked item, not a child of `related_id`.
 
-2. Link the new ticket to `related_id` via the Atlassian Rovo `link_issue` tool. Map `link_type` to a Jira issue-link type as follows:
+2. Link the new ticket to `related_id` via `createIssueLink`. Map `link_type` to a Jira issue-link type as follows:
 
-   | `link_type`     | Jira link type | Direction (new → related) |
-   |-----------------|----------------|---------------------------|
-   | `blocks`        | `Blocks`       | new blocks related        |
-   | `is_blocked_by` | `Blocks`       | related blocks new (set the link with the inverse direction) |
-   | `relates_to`    | `Relates`      | new relates to related    |
-   | `follows_up`    | `Relates`      | new relates to related, **plus** post a comment on the new ticket: `"Follow-up of <related_id>"` so the synthetic semantic is preserved when only the native `Relates` is available. |
+   | `link_type`     | Jira link type | `createIssueLink` arguments |
+   |-----------------|----------------|-----------------------------|
+   | `blocks`        | `Blocks`       | `inwardIssue: <new>, outwardIssue: <related>` (new blocks related) |
+   | `is_blocked_by` | `Blocks`       | `inwardIssue: <related>, outwardIssue: <new>` (related blocks new) |
+   | `relates_to`    | `Relates`      | either direction |
+   | `follows_up`    | `Relates`      | either direction, **plus** add `follow-up` to the new ticket's labels in step 1 and post a comment on the new ticket: `"Follow-up of <related_id>"` so the synthetic semantic is preserved when only the native `Relates` is available. |
 
    If the team uses a custom Jira link type called `Follow-up` / `Follows-up`, prefer that over the synthetic `Relates`+comment fallback.
 
@@ -134,21 +131,19 @@ Return the new ticket's key.
 
 Aggregate fetch — used by `/sdd-status` to avoid N round-trips.
 
-Use the Atlassian Rovo MCP `search_issues` tool (or `jql_search` depending on MCP version) with a JQL query and a `maxResults` cap.
+Call `searchJiraIssuesUsingJql` with the JQL query, a `maxResults` cap, and the same `fields` list as `FetchTicket`.
 
 `<query>` is JQL. Examples:
 - `project = "TT" AND labels = "stage-05-time-tracking"` — all tickets in a stage.
-- `project = "TT" AND issue in linkedIssues("TT-456", "split to")` — the work items split from a parent story (the linked-task model). Use the **outward** phrase of `jira.child_link_type` (for `Work item split` that is `split to`; for `Relates` use `relates to`).
-- `project = "TT" AND (parent = "TT-456" OR issue in linkedIssues("TT-456", "split to"))` — covers both legacy Sub-tasks (`parent`) and current linked work items in one query. Use this for re-run detection so old and new artifacts are both found.
-- `project = "TT" AND status != Done AND issuetype != Sub-task` — open top-level work (excludes any legacy sub-tasks).
+- `project = "TT" AND issue in linkedIssues("TT-456", "split to")` — the work items split from a parent story (the linked-task model). Use the **outward** phrase of `jira.child_link_type` (for `Work item split` that is `split to`; for `Relates` use `relates to` and append `AND (labels is EMPTY OR labels != "follow-up")` so follow-up tickets are not counted as work items).
+- `project = "TT" AND (parent = "TT-456" OR issue in linkedIssues("TT-456", "split to"))` — covers both legacy Sub-tasks (`parent`) and current linked work items in one query. Use this for re-run detection so old and new artifacts are both found. With `Relates`, append the same `AND (labels is EMPTY OR labels != "follow-up")` filter.
+- `project = "TT" AND status != "<jira.status_workflow.done>" AND issuetype != Sub-task` — open top-level work (excludes any legacy sub-tasks).
 
-Map each returned issue to the protocol shape exactly as `FetchTicket` does (see above). Cap defaults to 100. Pagination: if the result count equals the cap, the skill should re-issue with a higher cap or follow-up calls; the recipe doesn't paginate automatically.
+Map each returned issue to the protocol shape exactly as `FetchTicket` does (see above). Cap defaults to 100 (the tool's maximum). Paginate by re-issuing with the returned `nextPageToken` until it is absent.
 
 ## EnsureLabel(name)
 
-Jira labels are free-form strings — no creation step needed. Just include the label in the next `create_issue` or `update_issue` call.
-
-If the project uses Components instead of Labels for category grouping, use `add_component` once per project (idempotent).
+No-op. Jira labels are free-form strings — no creation step needed; they are set at create time via `additional_fields.labels`.
 
 ## CreateBranch / PushBranch / CreatePR / LinkTicketToPR
 

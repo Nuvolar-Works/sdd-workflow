@@ -2,7 +2,7 @@
 
 A workflow that drives PRDs and Jira stories through OpenSpec into trackable tickets, then implements with built-in code review and a sweep that archives changes after merge. Designed for 1-N developer teams.
 
-The whole `sdd/` folder is portable. Copy it (plus `.claude/skills/sdd-*/` and `.claude/skills/openspec-*/`) into any project, then run `/sdd-setup` to wire up tracker auth.
+Copy `.claude/skills/sdd-*/` and `.claude/skills/openspec-*/` into any project, then run `/sdd-setup` — it seeds `sdd/` from its own bundle and wires up tracker auth.
 
 ## Quickstart
 
@@ -20,13 +20,14 @@ PRD ──► OpenSpec change ──► tickets ──► implementation ──�
          design/tasks)
 ```
 
-Three modes, controlled by `sdd/config.json`:
+Two modes, controlled by `sdd/config.json`:
 
 | Mode | tracker | vcs | Tickets | Code/PRs |
 |------|---------|-----|---------|----------|
-| GitHub-only | github | github | GitHub Issues | GitHub |
-| Jira-only | jira | github | Jira | GitHub (PRs reference Jira keys) |
-| Hybrid | jira | github | Jira | GitHub, status synced back to Jira |
+| GitHub | github | github | GitHub Issues | GitHub |
+| Jira | jira | github | Jira | GitHub (PRs reference Jira keys; statuses synced to Jira) |
+
+The Jira mode was formerly called Hybrid.
 
 ## PRD decision tree
 
@@ -35,13 +36,13 @@ Three modes, controlled by `sdd/config.json`:
 | Greenfield, full scope | `/sdd-from-prd <slug>-v1` (or `/sdd-staged` for multi-stage) | `sdd/prds/<slug>-v1.md` from `prd-template.md` |
 | v2+ increment | `/sdd-from-prd <slug>-v2-<scope>` | `sdd/prds/<slug>-v2-<scope>.md` from `prd-template-mini.md` |
 | Single Jira user story | `/sdd-tasks-from-story <KEY>` | the story itself (the skill generates the spec) |
-| Trivial fix | `/opsx:propose "fix X"` then `/sdd-create-tickets <change>` | none |
+| Trivial fix | `/openspec-propose "fix X"` then `/sdd-create-tickets <change>` | none |
 
-Versioning: `<slug>-v1.md`, `<slug>-v2-<scope>.md`, `<slug>-v2.1-<scope>.md`. Each version is a separate `/sdd-from-prd` run; living specs in `openspec/specs/` accumulate across versions so v2 builds on v1 without re-stating it.
+Versioning: `<slug>-v1.md`, `<slug>-v2-<scope>.md`, `<slug>-v2-1-<scope>.md`. Each version is a separate `/sdd-from-prd` run; living specs in `openspec/specs/` accumulate across versions so v2 builds on v1 without re-stating it.
 
 ## Skills
 
-All skills accept `--dry-run` (preview mode — see Reference below). Required args in `<angle brackets>`, optional in `[square brackets]`.
+All `sdd-*` skills except `/sdd-setup` accept `--dry-run` (preview mode — see Reference below); the openspec-* skills do not. Required args in `<angle brackets>`, optional in `[square brackets]`.
 
 **Bootstrap & admin**
 
@@ -72,10 +73,10 @@ All skills accept `--dry-run` (preview mode — see Reference below). Required a
 
 | Skill | Purpose |
 |-------|---------|
-| `/opsx:propose "description"` | Free-form artifact creation. |
-| `/opsx:apply <change>` | Implement directly from artifacts. |
-| `/opsx:archive <change>` | Finalise → update living specs. |
-| `/opsx:explore` | Thinking partner for clarifying requirements. |
+| `/openspec-propose "description"` | Free-form artifact creation. |
+| `/openspec-apply-change <change>` | Implement directly from artifacts. |
+| `/openspec-archive-change <change>` | Finalise via `openspec archive` → update living specs. |
+| `/openspec-explore` | Thinking partner for clarifying requirements. |
 
 ## Folder layout
 
@@ -93,7 +94,7 @@ sdd/
 └── prd-template-mini.md     ← v2+ / change-request PRD template
 ```
 
-`openspec/` lives at the repo root (not under `sdd/`) — that's where the OpenSpec CLI expects it. `/sdd-setup` runs `openspec init` if it's missing.
+`openspec/` lives at the repo root (not under `sdd/`) — that's where the OpenSpec CLI expects it. `/sdd-setup` runs `openspec init --tools none` if `openspec/specs/` is missing.
 
 ---
 
@@ -135,19 +136,19 @@ The four ticket-creating skills detect existing state in Phase 0.5 and prompt **
 
 Post-merge, run `/sdd-status`. Walks active changes and offers (with prompts):
 
-- **Class A** — archive changes with all tickets done (`openspec archive`).
+- **Class A** — archive changes with all tickets done (`openspec archive <change> --yes`).
 - **Class B** — close parent stories with all linked work items done (status transition + Closing Summary comment).
 - **Class C** — reconcile `tasks.md` checkboxes against ticket statuses (backstop for drift; `/sdd-verify` does the primary per-section flip). Always safe; offered separately.
 
 ### Dry-run
 
-Every skill that writes external state accepts `--dry-run`. Reads always run; tracker writes are mocked with `[DRY RUN] would <op>(<args>)` lines and synthetic `DRY-N` ids for downstream wiring. Branch / push / PR creation skipped. `/sdd-work` halts after the plan — no code edits. Local file writes (OpenSpec artifacts, mapping files) do happen because they're git-revertable.
+All `sdd-*` skills except `/sdd-setup` accept `--dry-run`; the openspec-* skills do not. Reads always run; tracker writes are mocked with `[DRY RUN] would <op>(<args>)` lines and synthetic `DRY-N` ids for downstream wiring. Branch / push / PR creation skipped. `/sdd-work` halts after the plan — no code edits. Local OpenSpec artifacts are written (git-revertable); mapping and stage-map files and tasks.md annotations are only printed.
 
 ## Configuration
 
-`sdd/config.json` is the single source of truth. See `sdd/config.example.json` for the full shape and field documentation. Personal overrides go in `sdd/config.local.json` (git-ignored).
+`sdd/config.json` is the single source of truth. See `sdd/config.example.json` for the full shape.
 
-## Maintenance
+## Maintenance (sdd-workflow source repo only)
 
 After editing anything under `sdd/templates/`, `sdd/trackers/`, or the top-level scaffold (`config.example.json`, `README.md`, `prd-template*.md`):
 
@@ -159,4 +160,4 @@ Idempotent. Keeps the `/sdd-setup` seed bundle in sync so a fresh project gets t
 
 ## Migration from the legacy layout
 
-Coming from pre-`sdd/` (`docs/constitution.md`, `docs/prds/`, `.tasks/`)? `/sdd-setup` offers to migrate. Skills fall back to the legacy paths for one transition cycle if the new locations aren't present yet.
+Coming from pre-`sdd/` (`docs/constitution.md`, `docs/prds/`, `.tasks/`)? `/sdd-constitution` migrates `docs/constitution.md`; move `docs/prds/` to `sdd/prds/` manually. Skills fall back to the legacy paths for one transition cycle if the new locations aren't present yet.

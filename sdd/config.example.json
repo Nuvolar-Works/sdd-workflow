@@ -2,7 +2,6 @@
   "tracker": "github",
   "vcs": "github",
   "github": {
-    "remote": "origin",
     "default_base_branch": "develop"
   },
   "jira": {
@@ -17,7 +16,7 @@
       "refactor": "Task"
     },
     "child_issue_type": "Task",
-    "child_link_type": "Relates",
+    "child_link_type": "Work item split",
     "status_workflow": {
       "in_progress": "In Progress",
       "in_review": "In Review",

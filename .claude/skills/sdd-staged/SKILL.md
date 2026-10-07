@@ -16,7 +16,7 @@ You are running the staged greenfield pipeline: read a PRD, propose development 
 - Required: `<feature-slug>` (e.g. `my-app`).
 - Optional: `--dry-run`. When present, set `DRY_RUN=true`. Stage artifacts still generate locally; tracker writes are mocked with synthetic `DRY-N` ids.
 
-PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/prds/<feature-slug>.md`).
+PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (fallbacks: `sdd/prds/<feature-slug>.md`, then legacy `docs/prds/<feature-slug>.md`).
 
 ## Phase 0: Tracker Setup
 
@@ -29,7 +29,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/pr
 ## Phase 0.5: Re-run Safety
 
 6. Detect existing staged state:
-   - List `openspec/changes/<feature-slug>-*` directories. Capture stage slugs.
+   - List `openspec/changes/<feature-slug>-[0-9][0-9]-*` directories. Capture stage slugs.
    - Read `sdd/tasks/<feature-slug>-stages.md` if present.
    - For each stage directory, scan `openspec/changes/<feature-slug>-NN-<slug>/tasks.md` section headers for ticket-id annotations (`## N. <name> (#42)` or `## N. <name> [TT-457]`). Capture (stage, section-number → id) triples.
    - Read `sdd/tasks/<feature-slug>-NN-<slug>.md` per-stage mappings if present. Capture ticket ids.
@@ -48,8 +48,8 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/pr
 
    Ask: "Continue (resume staged work, only fill gaps) / Regenerate (per-file diffs) / Abort?" Default Continue.
 
-   - **Continue**: skip stage proposal (use existing `<feature-slug>-stages.md`); skip artifact generation per-file where files exist; the protocol's re-run hook skips ticket creation for sections with existing ids.
-   - **Regenerate**: re-propose stages (warn that this can shift stage boundaries); per-artifact diff before overwrite; per-ticket diff before recreate.
+   - **Continue**: skip stage proposal (use existing `<feature-slug>-stages.md`, or rebuild per step 15); skip artifact generation per-file where files exist; the protocol's re-run hook skips ticket creation for sections with existing ids.
+   - **Regenerate**: re-propose stages (warn that this can shift stage boundaries); per-artifact diff before overwrite; per-ticket diff before replacing (create the replacement, then `CloseTicket(<old>, "Replaced by <new>")`).
    - **Abort**: stop.
 
    When `DRY_RUN`: detection still runs; the prompt still fires; no destructive ops execute.
@@ -64,7 +64,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/pr
 12. Check `## API Contract`. If present:
     - Local file: read it. URL: WebFetch. On failure, ask whether to proceed without.
     - Parse and hold an **API Summary** in context (title, version, base URL, auth, relevant endpoints, schemas).
-13. Assess if staging is appropriate. With only 1-2 user stories, suggest `/sdd-from-prd <feature-slug>`. If user wants staging, continue.
+13. Assess if staging is appropriate. With only 1-2 user stories, suggest `/sdd-from-prd <feature-slug>-v1`. If user wants staging, continue.
 
 ## Phase 1.5: Read Constitution Sections
 
@@ -77,7 +77,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/pr
 
 ## Phase 2: Analyze and Propose Stages
 
-15. **Continue mode**: skip this phase. Use the existing `<feature-slug>-stages.md` to drive Phase 3.
+15. **Continue mode**: skip this phase. Use the existing `<feature-slug>-stages.md` to drive Phase 3. If the stage map is missing, rebuild the stage list from the `openspec/changes/<feature-slug>-NN-*` directories found in Phase 0.5.
 
     **Otherwise**: propose 3-6 stages. Algorithm:
     - Greenfield defaults: `01-setup` (init, tooling, CI), `02-scaffold` (app shell, routing, layout, shared utilities).
@@ -85,7 +85,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/pr
     - Order by dependency: features others depend on come first.
     - If API Contract exists, stages that set up clients/types come before stages that consume them.
 
-16. Present proposed stages as a table. Allow add / remove / reorder / rename / reassign-stories. Wait for explicit approval. Stages with zero user stories (setup/scaffold) are fine.
+16. Present proposed stages as a table. Allow add / remove / reorder / rename / reassign-stories. Wait for explicit approval. Stages with zero user stories (setup/scaffold) are fine. On approval, write the stage map (format in step 22) to `sdd/tasks/<feature-slug>-stages.md` with the Tickets column empty.
 
 ## Phase 3: Generate OpenSpec Artifacts Per Stage
 
@@ -93,7 +93,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/pr
 
     a. `CHANGE_NAME = <feature-slug>-NN-<stage-slug>` (zero-padded).
 
-    b. Re-run gate: if Phase 0.5 mode is **Continue** and the change directory already exists, skip `openspec new change`. Otherwise:
+    b. Re-run gate: if `openspec/changes/$CHANGE_NAME/` already exists, skip `openspec new change` (any mode). Otherwise:
        ```bash
        openspec new change "$CHANGE_NAME"
        ```
@@ -131,10 +131,10 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/pr
     - `is_work_item = false`
     - `dry_run = DRY_RUN`
     - **Stage label**: include `stage-NN-<slug>` in every payload's labels (the protocol's label step calls `EnsureLabel("stage-NN-<slug>")` automatically when it sees a new label).
-    - **Cross-stage dependencies**: the **first ticket of each stage after 01** depends on the **last ticket of the previous stage** (stage gate). Add specific cross-references when a section's hints mention a prior-stage output.
-    - **Stage Context** (added to each ticket body before the protocol's footer): "This ticket is part of **Stage NN-<slug>** of the `<feature-slug>` staged development. See `sdd/tasks/<feature-slug>-stages.md` for the full stage map."
+    - **Cross-stage dependencies**: the **first ticket of each stage after 01** depends on the **last ticket of the previous stage** (stage gate), using its real id whether created this run or captured in Phase 0.5. Add specific cross-references when a section's hints mention a prior-stage output.
+    - **Stage Context**: add a `## Stage Context` heading, placed immediately before the protocol's `---` footer, followed by: "This ticket is part of **Stage NN-<slug>** of the `<feature-slug>` staged development. See `sdd/tasks/<feature-slug>-stages.md` for the full stage map."
 
-22. After all stages complete, write the master stage map to `sdd/tasks/<feature-slug>-stages.md`:
+22. After all stages complete, fill the ticket ids into the master stage map at `sdd/tasks/<feature-slug>-stages.md`:
 
     ```markdown
     # Staged Development: <feature-slug>
@@ -163,7 +163,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (legacy fallback: `docs/pr
     | 1.1  | <id>   | ...   | ...  | none       |
     ```
 
-    When `DRY_RUN`, write the stage map locally with `DRY-N` ids; the file is git-revertable.
+    When `DRY_RUN`, print the stage map (here and at step 16) instead of writing it.
 
 23. Print the final summary listing each stage, change, ticket range, and description, plus next steps:
 
