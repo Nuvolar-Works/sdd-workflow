@@ -26,7 +26,7 @@ You are producing a project snapshot **and** running the post-merge completion s
    ls openspec/changes/ 2>/dev/null | grep -v '^archive$'
    ```
 
-5. List `sdd/tasks/*.md` mapping files. Each represents a change with tickets. Parse the markdown table to capture ticket ids per change.
+5. List `sdd/tasks/*.md` mapping files, skipping `*.archived.md` and `*-stages.md`. Each represents a change with tickets. Parse the markdown table to capture ticket ids per change.
 
 6. Compute the union of ticket ids across all mapping files. Use this as the input to a single `SearchTickets` call (or one per change if the tracker requires it).
 
@@ -34,7 +34,7 @@ You are producing a project snapshot **and** running the post-merge completion s
 
 7. Build a tracker-native query:
    - **Jira**: `project = "<PROJ>" AND key in (<comma-separated-ids>)` — single JQL search via `SearchTickets`.
-   - **GitHub**: `gh issue list --state=all` plus filtering by ticket numbers client-side, OR a search query like `"in:body Source: openspec/changes"` — one shot. The recipe handles either path.
+   - **GitHub**: all issues filtered by ticket number client-side, OR a body search for `Source: openspec/changes` — one shot. The recipe handles either path.
 
 8. Call `SearchTickets(query)` once per tracker (or once total if the tracker can express a single query). Result: an array of ticket payloads with statuses.
 
@@ -54,7 +54,7 @@ You are producing a project snapshot **and** running the post-merge completion s
     git status --porcelain | wc -l
     ```
 
-11. Extract the ticket id from the branch name if it matches the convention (`<type>/<ticket-id>-<slug>`).
+11. Extract the ticket id from the branch name as /sdd-verify Phase 1 does (`feat/42-x` → `42`; `feat/tt-456-x` → `TT-456`).
 
 12. If a ticket id was extracted, look it up in the search result for its status. (No extra `FetchTicket` call needed — it's already in the aggregate.)
 
@@ -89,28 +89,28 @@ If the current branch is the base branch (`develop` or `main`), omit the "Linked
 
 Walk the change list one more time and identify three classes of follow-up:
 
-**Class A — Fully-done changes ready to archive.** A change is ready when every ticket in its mapping is `Done` (Jira) or **closed and resolved by a merged PR** (GitHub). The merge check matters because `/sdd-verify`'s `LinkTicketToPR` closes GitHub issues at PR-creation time as a workaround (PRs target `develop`, not the default branch, so GitHub's auto-close-on-merge doesn't fire). Without verifying the PR merged, a change can be archived while its work is still in review.
+**Class A — Fully-done changes ready to archive.** A change is ready when every ticket in its mapping is in `jira.status_workflow.done` (Jira) or **closed and resolved by a merged PR** (GitHub). The merge check matters because `/sdd-verify`'s `LinkTicketToPR` closes GitHub issues at PR-creation time as a workaround (PRs target `develop`, not the default branch, so GitHub's auto-close-on-merge doesn't fire). Without verifying the PR merged, a change can be archived while its work is still in review.
 
 For each GitHub ticket in a candidate change:
 
-1. `gh issue view <id> --json state` — confirm `state == CLOSED`. If not, the change is not Class A.
-2. Call `GetLinkedPR(<id>)` from the GitHub recipe. This tries the GraphQL API (`closedByPullRequestsReferences`) first and falls back to the comment-text scan for `Resolved in PR #<n>`. Returns `{ pr_number, state, merged_at }` or `null`.
+1. Confirm the ticket's state in the Phase 2 aggregate is `CLOSED`. If not, the change is not Class A.
+2. Call `GetLinkedPR(<id>)` from the GitHub recipe. This scans the comments for `Resolved in PR #<n>` first and falls back to the GraphQL API (`closedByPullRequestsReferences`, only populated for PRs into the default branch). Returns `{ pr_number, state, merged_at }` or `null`.
 3. The returned `state` must be `MERGED`. Any other value (`OPEN`, `CLOSED` without merge) disqualifies the change from Class A.
 4. If `GetLinkedPR` returns `null`, or the linked PR is not `MERGED`, surface the change in a separate **"Closed without merged PR — needs manual review"** row in the sweep output and skip archiving.
 
-**Class A.1 — Jira work-item tickets ready to transition to Done.** Applies when `tracker = jira` (full Jira or hybrid). `/sdd-verify` transitions Jira work-item tickets (the goal-level Tasks linked to a story) to `In Review` at PR-creation time but does not transition to `Done` — that happens here, after the PR actually merges.
+**Class A.1 — Jira work-item tickets ready to transition to Done.** Applies when `tracker = jira`. `/sdd-verify` transitions Jira work-item tickets (the goal-level Tasks linked to a story) to `In Review` at PR-creation time but does not transition to done — that happens here, after the PR actually merges.
 
-For each Jira ticket in the aggregate that is **not yet** `Done` (typically `In Review`, but also any pre-`Done` status):
+For each Jira ticket in the aggregate that is **not yet** in `jira.status_workflow.done` (typically `In Review`, but also any earlier status):
 
 1. Call `GetLinkedPR(<jira-key>)` from the Jira recipe. This scans the ticket's comments for a GitHub PR URL (posted by `LinkTicketToPR`) and checks the PR state via `gh`. Returns `{ pr_number, state, merged_at }` or `null`.
 2. If `state == MERGED`, the ticket is a Class A.1 candidate — its PR has merged but the Jira status hasn't caught up.
 3. If `state` is `OPEN` or `CLOSED` (not merged), or `null`, skip — the ticket is genuinely still in review (or has no PR yet).
 
-A Jira work-item ticket that's already `Done` counts toward Class A; one still pre-`Done` with no merged PR keeps the parent change out of Class A.
+A Jira work-item ticket already in `jira.status_workflow.done` counts toward Class A; one not yet done with no merged PR keeps the parent change out of Class A.
 
-**Class B — Parent stories ready to close.** For each fully-done change (counting Class A.1 candidates as effectively done), identify the parent story (read the mapping's "Source story:" line, or scan a sample ticket body for a `Parent:` line). If the parent story exists and is **not yet** in `Done` status, it's a candidate.
+**Class B — Parent stories ready to close.** For each fully-done change (counting Class A.1 candidates as effectively done), identify the parent story from the `parent` field of the change's tickets in the Phase 2 aggregate (`SearchTickets` resolves it like `FetchTicket`: Jira child link or GitHub `Parent: #N` line). If the parent story exists and is **not yet** done (Jira: `jira.status_workflow.done`; GitHub: closed), it's a candidate.
 
-**Class C — `tasks.md` checkbox reconciliation (backstop).** As of the Phase 2.8 step in `/sdd-verify`, the primary checkbox flip happens on the feature branch and ships inside each work item's PR. Class C is now a **reconciliation backstop**: it catches drift where a ticket is `Done` but its section is still `[ ]` — e.g. work merged before this step existed, a hotfix that skipped `/sdd-verify`, or a ticket transitioned manually. For every change (not just fully-done ones), each section header carries a ticket id; the checklist under it should be `[x]` if the ticket is `Done`, `[ ]` otherwise. Usually a no-op once `/sdd-verify` has run for each merged work item.
+**Class C — `tasks.md` checkbox reconciliation (backstop).** As of the Phase 2.8 step in `/sdd-verify`, the primary checkbox flip happens on the feature branch and ships inside each work item's PR. Class C is now a **reconciliation backstop**: it catches drift where a ticket is done but its section is still `[ ]` — e.g. work merged before this step existed, a hotfix that skipped `/sdd-verify`, or a ticket transitioned manually. For every change (not just fully-done ones), each section header carries a ticket id; the checklist under it should be `[x]` if the ticket is done (see step 15), `[ ]` otherwise. Usually a no-op once `/sdd-verify` has run for each merged work item.
 
 13. Present the sweep:
 
@@ -142,16 +142,16 @@ A Jira work-item ticket that's already `Done` counts toward Class A; one still p
 14. **Class C is always safe** to run — it's a single-writer regeneration from authoritative tracker statuses. Even on `no`, offer to run **just the regeneration** ("Regenerate tasks.md anyway? (y/n)") because it has no side effects beyond the local repo and resolves the concurrency issue described in `sdd/README.md` § Concurrency.
 
 15. **Execution** (when not `DRY_RUN`):
-    - **Class A**: for each archive candidate, run `openspec archive <change>`. Update the mapping file: rename to `sdd/tasks/<change>.archived.md` or append `**Status:** Archived <YYYY-MM-DD>` to the front matter.
-    - **Class A.1**: for each Jira work-item ticket whose PR is merged, run `UpdateTicketStatus(<jira-key>, "done")`. Order matters — run Class A.1 **before** Class A's archive check is re-evaluated for the same change, so a change whose only remaining "not done" work item is a Class A.1 candidate becomes eligible for Class A archival in the same sweep. (Practical execution: process A.1 first, then A, then B, then C.)
+    - **Class A**: for each archive candidate, run `openspec archive <change> --yes`. Then rename the mapping file to `sdd/tasks/<change>.archived.md`.
+    - **Class A.1**: for each Jira work-item ticket whose PR is merged, run `UpdateTicketStatus(<jira-key>, "done")`. Order matters — run Class A.1 **before** Class A's archive check is re-evaluated for the same change, so a change whose only remaining "not done" work item is a Class A.1 candidate becomes eligible for Class A archival in the same sweep. (Practical execution: process A.1 first, then C, then A, then B — C must run before A moves `tasks.md` into the archive.)
     - **Class B**: for each parent story, draft a Closing Summary comment aggregating the work-item summaries (use `sdd/templates/ticket-comment-shapes.md` § Closing summary). Show the draft. On user `yes`, post via `CommentOnTicket(<story-key>, body)` then run `UpdateTicketStatus(<story-key>, "done")`.
     - **Class C**: for each change, regenerate `openspec/changes/<change>/tasks.md`:
       - Read the current `tasks.md`.
       - For each `## N. <title> [<key>]` (or `(#N)`) section header:
         - Look up the ticket status from the aggregate.
-        - If `Done` / `closed`: change every `- [ ]` in the section to `- [x]`.
+        - If done (Jira: `jira.status_workflow.done`; GitHub: `CLOSED` and its `GetLinkedPR` state is `MERGED`): change every `- [ ]` in the section to `- [x]`.
         - Otherwise: leave as-is (in-progress and open both stay `[ ]`; the file is meant to reflect "is this section's work shipped?").
-      - Write atomically (single read-modify-write). One git commit per regeneration is fine; the user can stage / commit as they like.
+      - Write atomically (single read-modify-write). Leave changes uncommitted and list the modified files.
 
 16. **Execution** (when `DRY_RUN`):
     - For each candidate, print `[DRY RUN] would <op>(...)`.

@@ -1,6 +1,6 @@
 # Mini PRD
 
-For follow-on increments (v2, v2.1) and change requests. Use this when the work builds on an existing feature and most of the product context is already captured in a prior PRD version or in `openspec/specs/`.
+For follow-on increments (v2, v2-1) and change requests. Use this when the work builds on an existing feature and most of the product context is already captured in a prior PRD version or in `openspec/specs/`.
 
 **Feature:** <feature name> — <increment slug, e.g. v2-overtime-rules>
 **Builds on:** <link to prior PRD version or OpenSpec change>

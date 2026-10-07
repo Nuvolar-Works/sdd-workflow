@@ -4,13 +4,13 @@ Used by `/sdd-tasks-from-story` Phase 4 when building the bodies of the goal-lev
 
 ## Goal-type detection
 
-Apply heuristics in order; first match wins.
+Apply heuristics in order; first match wins. Match whole words, case-insensitive.
 
 | Type | Heuristic |
 |------|-----------|
 | **Setup / chore** | Section title contains `setup`, `config`, `infrastructure`, `tooling`, `init`, `install`, `dependencies` |
 | **Refactor** | Section title contains `refactor`, `cleanup`, `migrate`, `consolidate` |
-| **Test** | Section title contains `test`, `tests`, `coverage`, `e2e`, `unit`, `integration test` |
+| **Test** | Section title contains `test`, `tests`, `coverage`, `e2e`, `unit` |
 | **Integration** | Section title contains `integration`, `API`, `endpoint`, `client`, `wiring`, `backend`; or section description references `api-contract.yaml` |
 | **UI** | Section title or description references components, panels, pages, forms, layout, styling — when none of the above match. (Default for most user-facing goals.) |
 | **Generic** | Fallback when nothing matches. Rarely needed. |
@@ -23,8 +23,8 @@ Each block is what gets inlined into the work-item body's `## Definition of Done
 
 ```
 - All Acceptance Criteria above are met
-- Lint passes (`npm run lint`)
-- Build compiles (`npm run build`)
+- Lint passes (per `sdd/constitution/quality-gates.md`)
+- Build compiles (per `sdd/constitution/quality-gates.md`)
 - New configs documented inline or in CLAUDE.md
 ```
 
@@ -32,7 +32,7 @@ Each block is what gets inlined into the work-item body's `## Definition of Done
 
 ```
 - All Acceptance Criteria above are met
-- Tests still pass (`npm test`) — no regressions
+- Tests still pass (per `sdd/constitution/quality-gates.md`) — no regressions
 - TypeScript strict mode passes
 - No new files added (refactor only); if a file split is necessary, document why in the commit message
 - Public API surface preserved (or breaking changes documented)
@@ -42,7 +42,7 @@ Each block is what gets inlined into the work-item body's `## Definition of Done
 
 ```
 - All Acceptance Criteria above are met
-- New tests pass locally (`npx vitest run --reporter=dot <file>`)
+- New tests pass locally (run only the new test file with the project's test runner)
 - Tests follow the existing patterns in neighbouring test files
 - Coverage for the targeted module ≥ project threshold (per `sdd/constitution/quality-gates.md`)
 - No flaky tests introduced (run twice locally to confirm)
@@ -91,6 +91,6 @@ Work items for **Setup / chore** and **Refactor** goals get a one-line DoD point
 See `sdd/templates/definition-of-done.md` § <type>. AC above are the primary gate.
 ```
 
-Work items for **UI**, **Integration**, and **Test** goals get the **full block** inlined. This is where the meat of the value is — the developer needs the goal-specific items in front of them.
+Work items for **UI**, **Integration**, **Test**, and **Generic** goals get the **full block** inlined. This is where the meat of the value is — the developer needs the goal-specific items in front of them.
 
 The calling skill (`/sdd-tasks-from-story` Phase 4) decides between inline and reference based on the goal type detection above.

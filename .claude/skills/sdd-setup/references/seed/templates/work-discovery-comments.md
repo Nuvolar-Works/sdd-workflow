@@ -69,7 +69,7 @@ If `yes`:
 
 4. Call `CreateRelatedTicket(payload, related_id, link_type)`. Capture the new ticket id.
 
-5. Amend the original Follow-up comment (if it was a Follow-up): update the `**Tracked as:**` field with the new ticket id. Use `CommentOnTicket` again or the tracker's edit-comment operation when available.
+5. If it was a Follow-up: post a one-line `**Tracked as:** <new-id>` reply via `CommentOnTicket`.
 
    For Blocker comments, no in-place amendment is needed — the recipe's back-reference comment on the parent does the linking.
 
@@ -87,14 +87,6 @@ work_state = {
 ```
 
 The Closing summary stitches these together into one anchor comment.
-
-## Dry-run
-
-When `DRY_RUN` is set:
-- The detection and prompt flow still runs (prompts surface to the user).
-- On `yes` or `edit`, the draft is shown but not posted. Print `[DRY RUN] would CommentOnTicket(...)`.
-- Follow-up ticket prompts still ask, but on `yes` print `[DRY RUN] would CreateRelatedTicket(...)` and assign synthetic id `DRY-<n>`.
-- The `work_state` is still maintained — the closing summary in Phase 4.5 reflects what would have been posted.
 
 ## Skip semantics
 

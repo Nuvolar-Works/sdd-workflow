@@ -1,6 +1,6 @@
 ---
 name: sdd-tasks-from-story
-description: Generate an OpenSpec change for a Jira user story, then create one board-visible Jira Task per significant goal, each linked back to the story. Each Task references the spec section it implements. Works for full-Jira and hybrid (Jira tickets + GitHub VCS) modes.
+description: Generate an OpenSpec change for a Jira user story, then create one board-visible Jira Task per significant goal, each linked back to the story. Each Task references the spec section it implements. Requires Jira mode (Jira tickets, code/PRs on GitHub).
 argument-hint: "<jira-story-key> [--dry-run]"
 disable-model-invocation: true
 ---
@@ -13,9 +13,7 @@ You are turning a PO-written Jira user story (e.g. `TT-456`) into:
 
 > **Why linked Tasks, not Sub-tasks?** Jira Sub-tasks don't appear on the board — they're buried inside their parent, so the team loses visibility of the goal-level work. Story and Task sit at the same hierarchy level, so the association is an issue link rather than a `parent`. The `CreateChildTickets` recipe in `sdd/trackers/jira.md` handles both the create and the link.
 
-This works in two modes:
-- **Full Jira** (`tracker: "jira"` in `sdd/config.json`): tickets and code both flow through Jira context.
-- **Hybrid** (`tracker: "jira"`, `vcs: "github"`): each goal is a Jira Task linked to the story; later `/sdd-work` will create GitHub branches and PRs that link back via the Jira key.
+This requires Jira mode (`tracker: "jira"` in `sdd/config.json`): each goal is a Jira Task linked to the story; later `/sdd-work` creates GitHub branches and PRs that link back via the Jira key.
 
 ## Input
 
@@ -34,17 +32,18 @@ This works in two modes:
 ## Phase 0.5: Re-run Safety + Team Split Categorisation
 
 5. Detect existing state:
-   - Run `FetchTicket($ARGUMENTS)`. Capture description; scan it for an `openspec/changes/<change-name>/` reference. If found, hold the change name.
+   - Run `FetchTicket($ARGUMENTS)`. Capture the result for Phase 1.
+   - Glob `openspec/changes/<lowercased-story-key>-*/` (step 11's prefix). If exactly one matches, hold it as the change name; if several match, ask.
    - If a change name was found, list the contents of `openspec/changes/<change-name>/`.
    - If `openspec/changes/<change-name>/tasks.md` exists, scan its section headers for work-item key annotations (`## N. <name> [TT-457]`). Capture (section-number → key) pairs.
-   - Run a search on Jira for work items associated with this story. Use the combined query from `sdd/trackers/jira.md` § SearchTickets that covers **both** the linked-task model and legacy sub-tasks: `project = "<PROJ>" AND (parent = "$ARGUMENTS" OR issue in linkedIssues("$ARGUMENTS", "<outward-phrase-of-child_link_type>"))`. Capture each result's key, title, status, and labels. (Legacy Sub-tasks created before this model surface via `parent`; current Tasks surface via the link.)
+   - Run a search on Jira for work items associated with this story. Use the combined query from `sdd/trackers/jira.md` § SearchTickets that covers **both** the linked-task model and legacy sub-tasks: `project = "<PROJ>" AND (parent = "$ARGUMENTS" OR issue in linkedIssues("$ARGUMENTS", "<outward-phrase-of-child_link_type>"))` (append the follow-up label filter when `child_link_type` is `Relates`). Capture each result's key, title, status, and labels. (Legacy Sub-tasks created before this model surface via `parent`; current Tasks surface via the link.)
    - Read `sdd/tasks/<change-name>.md` if it exists.
    - Merge keys from annotations, the Jira search, and the mapping file. If they disagree (annotated section without a matching Jira work item, or a work item without an annotation), note the divergence for the report.
 
-5b. **Team split categorisation.** Read `jira.team_prefix` from `sdd/config.json`. For each pre-existing work item found in step 5 (whether a linked Task or a legacy Sub-task), classify into one of three buckets:
-   - **same-team** — title starts with `<team_prefix> -` (case-insensitive, with or without spaces) OR carries a label like `team-<lowercase-prefix>`. These may overlap with the goals SDD is about to derive; surface them in Phase 3 for **merge / replace / keep alongside** decisions.
-   - **other-team** — title starts with a different known prefix (e.g. `BE -`, `QA -`, `DESIGN -`). These belong to a different team's repo. Their titles + descriptions become **cross-team context** for `Phase 1.6: Codebase Audit` and `design.md`'s API Integration section. They are never in scope as SDD-generated work items here.
-   - **unprefixed** — no recognised prefix. Flag as ambiguous in the report and ask the user per-ticket whether to treat as same-team, other-team (with which team), or ignore.
+5b. **Team split categorisation.** Exclude keys already captured from `tasks.md` header annotations or `sdd/tasks/<change-name>.md`; they are handled by the Continue/Regenerate choice. Read `jira.team_prefix` from `sdd/config.json`. For each pre-existing work item found in step 5 (whether a linked Task or a legacy Sub-task), classify into one of three buckets:
+   - **same-team** — title starts with `<team_prefix> -` (case-insensitive, with or without spaces) OR carries a label like `team-<lowercase-prefix>`. These may overlap with the goals SDD is about to derive; surface them in Phase 3 for **use existing / keep alongside / close** decisions (step 19b).
+   - **other-team** — title starts with any other `<TOKEN> -` prefix, where TOKEN is a short all-caps team code different from `team_prefix` (e.g. `BE -`, `QA -`, `DESIGN -`). These belong to a different team's repo. Their titles + descriptions become **cross-team context** for `Phase 1.6: Codebase Audit` and `design.md`'s API Integration section. They are never in scope as SDD-generated work items here.
+   - **unprefixed** — anything else. Flag as ambiguous in the report and ask the user per-ticket whether to treat as same-team, other-team (with which team), or ignore.
 
    If `team_prefix` is `null` or absent, skip categorisation and treat all pre-existing work items as unprefixed (old behaviour).
 
@@ -71,7 +70,7 @@ This works in two modes:
    Then ask: "Continue (skip existing artifacts/work items; only fill gaps) / Regenerate (per-file diffs and per-work-item diffs) / Abort?" Default Continue.
 
    - **Continue**: in Phase 2 skip artifact generation per file when the file exists; in Phase 4 the protocol's re-run hook skips creation for sections whose section header already carries a `[KEY]` annotation.
-   - **Regenerate**: per-file artifact diff + per-work-item body diff before any overwrite or recreate; explicit `yes` per item.
+   - **Regenerate**: per-file artifact diff + per-work-item body diff before any overwrite or replacement; explicit `yes` per item. Replacing a work item means creating the replacement, then `CloseTicket(<old>, "Replaced by <new>")` — never deletion.
    - **Abort**: stop.
 
    When `DRY_RUN`: detection still runs; the prompt fires; nothing destructive executes.
@@ -98,7 +97,7 @@ This works in two modes:
 
 9b. Read `sdd/templates/codebase-audit.md` for the workflow. Run it with:
     - `ac_items` — the AC list extracted from the story description plus any AC-modifying highlights returned by Phase 1.5.
-    - `cross_team_subtasks` — the **other-team** bucket from Phase 0.5 step 5b (titles + descriptions only).
+    - `cross_team_context` — the **other-team** bucket from Phase 0.5 step 5b (titles + descriptions only).
 
     The template:
     - Maps each AC item to likely files via `sdd/constitution/folder-structure.md` (and `Glob`/`Grep` only as a last resort).
@@ -106,9 +105,9 @@ This works in two modes:
     - Surfaces a single matrix to the user for confirmation, with a Cross-team context subsection for other-team work-item hints.
     - Hands back the **confirmed audit matrix** as input to Phase 2.
 
-    Why this is mandatory: in an existing codebase, AC items often map to code that is already partially or fully implemented. Without the audit, every AC becomes an `ADDED` requirement and Phase 4 over-creates Tasks; `/sdd-work` then re-discovers the existing implementation mid-build. The audit lets Phase 2 mark already-satisfied scenarios as `MODIFIED` (or omit them) and lets `tasks.md` cover only the genuine delta.
+    Why this is mandatory: in an existing codebase, AC items often map to code that is already partially or fully implemented. Without the audit, every AC becomes an `ADDED` requirement and Phase 4 over-creates Tasks; `/sdd-work` then re-discovers the existing implementation mid-build. The audit lets Phase 2 record already-satisfied scenarios as locked-in behaviour (or omit them) and lets `tasks.md` cover only the genuine delta.
 
-    The audit is in-memory input to Phase 2. Phase 2 may optionally persist it to `openspec/changes/<change>/.audit.md` so `/sdd-work` can re-consult it; this skill does not require persistence.
+    The audit is in-memory input to Phase 2.
 
 ## Phase 2: Generate the OpenSpec Change
 
@@ -118,9 +117,9 @@ This works in two modes:
 
     Legacy fallback: `docs/constitution.md`. Skip if neither exists.
 
-11. Derive a change name: slug the story title in kebab-case, prefix with the lowercased story key. E.g. `TT-456` "Dashboard page" → `tt-456-dashboard-page`.
+11. If Phase 0.5 held a change name, use it; otherwise derive one: slug the story title in kebab-case, prefix with the lowercased story key. E.g. `TT-456` "Dashboard page" → `tt-456-dashboard-page`.
 
-12. **Re-run gate**: if Phase 0.5 mode is **Continue** and the change directory already exists, skip `openspec new change`. Otherwise:
+12. **Re-run gate**: if `openspec/changes/$CHANGE_NAME/` already exists, skip `openspec new change` (any mode). Otherwise:
     ```bash
     openspec new change "$CHANGE_NAME"
     ```
@@ -140,7 +139,7 @@ This works in two modes:
 
     d. Create using the `template`. Inputs: **the story description (with comment-driven adjustments applied) + the included Phase 1.5 highlights + the confirmed Phase 1.6 audit matrix + the Phase 0.5 cross-team context**. On conflict, comments win.
        - **proposal.md**: story description (adjusted) → problem; story goal → objective; AC → success criteria; parent epic noted. Add an **Open Questions** section listing any [open question] comments the user opted to keep.
-       - **specs/*.md**: each significant goal becomes one spec file. Use GIVEN-WHEN-THEN. Reference `sdd/templates/given-when-then-examples.md`. Source AC from the story. **Apply audit classifications**: AC items marked `new` in the audit become `ADDED Requirements`; AC items marked `partial` become `ADDED Requirements` whose scenarios explicitly call out the existing code to remove/change; AC items marked `done` become `MODIFIED Requirements` (locking in current behaviour) or are **omitted** if they restate a constitution-level invariant. Never emit an `ADDED` scenario for behaviour already met by the codebase.
+       - **specs/<capability>/spec.md**: each significant goal becomes one capability, `specs/<capability>/spec.md`. Use GIVEN-WHEN-THEN. Reference `sdd/templates/given-when-then-examples.md`. Source AC from the story. **Apply audit classifications**: AC items marked `new` in the audit become `ADDED Requirements`; AC items marked `partial` become `ADDED Requirements` whose scenarios explicitly call out the existing code to remove/change; AC items marked `done` become `MODIFIED Requirements` only when `openspec/specs/<capability>/spec.md` already has a requirement with the same header; otherwise `ADDED Requirements` (locking in current behaviour); or are **omitted** if they restate a constitution-level invariant. `done` items never produce `tasks.md` work.
        - **design.md**: technical approach across all goals. Component structure, state management, reuse from existing components/hooks (per `folder-structure.md`). Cite the specific files the audit identified as `partial` so the design records what gets replaced vs extended. Add an **API Integration** subsection if the story mentions backend; if Phase 0.5 surfaced **cross-team context** (other-team work items under the same parent), feed their endpoint/contract hints into this subsection — never into spec scenarios for this repo.
        - **tasks.md**: **one section per significant goal** (`## 1. <Goal name>`, `## 2. <Goal name>`, …). The set of `## N.` sections IS the set of Jira Tasks created in Phase 4. **Omit goals whose AC items are all classified `done` in the audit** — there's no work to do there. For `partial` AC items, the corresponding task bullets must reference the existing file paths so reviewers can see what is being replaced.
 
@@ -148,7 +147,7 @@ This works in two modes:
 
     f. Re-check status after each artifact.
 
-15. Append a back-reference at the top of `proposal.md`:
+15. Insert a back-reference at the top of `proposal.md` unless a `Source story:` line already exists:
     ```
     Source story: <jira-url-or-key> ($ARGUMENTS)
     ```
@@ -157,10 +156,10 @@ This works in two modes:
 
 16. Read `sdd/templates/design-challenge.md`. Produce the challenge against the generated artifacts. Special focus: are the goals in `tasks.md` the right ones? Right granularity? Spec coverage matches AC?
 
-    If Phase 1.5 returned **blocker candidates**, list them under a **Blockers from story comments** subsection with three options each:
+    If Phase 1.5 returned **blocker candidates**, list them under a **Blockers from story comments** subsection with three options each (if a ticket already linked to the story via `Blocks` covers a blocker, show it instead of offering (c)):
     - (a) **Accommodate in spec** — design adapted (already done).
     - (b) **Accept and proceed** — `/sdd-work` will post a Blocker comment when implementation hits the issue.
-    - (c) **Track now as follow-up ticket** — call `CreateRelatedTicket(payload, related_id=$ARGUMENTS, link_type="is_blocked_by")` immediately; capture the new ticket id.
+    - (c) **Track now as follow-up ticket** — call `CreateRelatedTicket(payload, related_id=$ARGUMENTS, link_type="blocks")` immediately; capture the new ticket id.
 
     Apply requested artifact changes and create approved follow-up tickets before continuing.
 
@@ -171,21 +170,20 @@ This works in two modes:
 18. For each goal section, build a draft Task using `sdd/templates/jira-task-decomposition.md` for shape and `sdd/templates/definition-of-done.md` for the goal-type-specific DoD. Draft fields:
     - **Title**: the goal name (with optional team-area prefix).
     - **Description**: one paragraph derived from the section's intro + relevant `design.md` excerpt.
-    - **Acceptance Criteria**: 2-4 criteria copied from the matching `specs/<file>.md` scenarios.
-    - **Spec section**: `openspec/changes/$CHANGE_NAME/specs/<best-match>.md` (heuristic on goal name).
+    - **Acceptance Criteria**: 2-4 criteria copied from the matching `specs/<capability>/spec.md` scenarios.
+    - **Spec section**: `openspec/changes/$CHANGE_NAME/specs/<capability>/spec.md` (heuristic on goal name).
     - **Source**: `openspec/changes/$CHANGE_NAME/tasks.md (section N)`.
     - **Suggested labels**: kebab-case of area + type.
-    - **Depends on**: prior goal titles in `tasks.md` order, or "None".
+    - **Depends on**: earlier goals this goal actually needs (titles in preview; protocol writes ids), or "None".
     - **Implementation hints**: relevant excerpts from `design.md`.
     - **Goal type** (used by definition-of-done.md to pick the DoD block): apply the heuristics from `definition-of-done.md` § Goal-type detection.
 
-19. Present the draft list as a numbered table. Note: each Task corresponds to a `tasks.md` section — adjustments at this stage usually mean editing `tasks.md` (and the relevant `specs/*.md` for AC changes) **first**, because Phase 4's protocol delegation re-derives payloads from those files. Allow approve / edit / reorder / drop / add, and apply edits to `tasks.md` / `specs/` before proceeding. Phase 3's draft is a preview; the canonical inputs are the change artifacts.
+19. Present the draft list as a numbered table. Note: each Task corresponds to a `tasks.md` section — adjustments at this stage usually mean editing `tasks.md` (and the relevant `specs/*/spec.md` for AC changes) **first**, because Phase 4's protocol delegation re-derives payloads from those files. Allow approve / edit / reorder / drop / add, and apply edits to `tasks.md` / `specs/` before proceeding. Phase 3's draft is a preview; the canonical inputs are the change artifacts.
 
 19b. **Same-team pre-existing work items.** If Phase 0.5 step 5b categorised any pre-existing work items (linked Tasks or legacy Sub-tasks) as **same-team**, list them in a separate **Pre-existing same-team work items** section under the draft table. For each one, ask the user to choose:
-    - **Merge into goal N** — fold the pre-existing work item into one of the proposed goals; in Phase 4 the protocol will reuse the existing Jira key (annotate the `tasks.md` section with `[KEY]`) instead of creating a new Task.
-    - **Replace goal N** — drop the proposed goal and treat the pre-existing work item as authoritative; remove the `## N.` section from `tasks.md` and replace it with one that points at the existing key.
+    - **Use existing work item for goal N** — in Phase 3 write `[KEY]` onto section N's header in `tasks.md`; Phase 4 never recreates it (any mode). When `DRY_RUN`, print the annotation instead of writing it (and still treat the section as assigned for Phase 4).
     - **Keep alongside** — leave the pre-existing work item untouched; Phase 4 creates the SDD-derived Tasks alongside it. The user accepts the risk of duplicate scope.
-    - **Close in Jira** — flag for closure (do NOT close from within this skill; surface as a note in the summary so the user can do it manually or via `/sdd-status`).
+    - **Close in Jira** — flag for closure (do NOT close from within this skill; surface as a note in the summary so the user can do it manually).
 
     The intent is to never re-create work the PO already split out, while still letting SDD's goal-level decomposition replace layer-level decomposition where the user wants it.
 
@@ -198,9 +196,9 @@ This works in two modes:
     - `is_work_item = true`
     - `dry_run = DRY_RUN`
 
-    The protocol handles: per-section payload derivation (including Design Excerpt, API Integration when the goal type is Integration per `sdd/templates/definition-of-done.md` § Goal-type detection, and the goal-type-keyed Definition of Done block with inline-vs-reference rule), `EnsureLabel` calls, batched `CreateChildTickets` (which, for Jira, creates a board-visible Task per section and links it to the parent story via `jira.child_link_type`), `tasks.md` header annotations, mapping-file write at `sdd/tasks/$CHANGE_NAME.md`, and the summary print.
+    The protocol handles: per-section payload derivation (including Design Excerpt, API Integration when the goal type is Integration per `sdd/templates/definition-of-done.md` § Goal-type detection, and the goal-type-keyed Definition of Done block with inline-vs-reference rule), `EnsureLabel` calls, per-section `CreateChildTickets` (which, for Jira, creates a board-visible Task per section and links it to the parent story via `jira.child_link_type`), `tasks.md` header annotations, mapping-file write at `sdd/tasks/$CHANGE_NAME.md`, and the summary print.
 
-    Re-run safety: the protocol's hook honours the **Continue** / **Regenerate** mode set by Phase 0.5, skipping sections whose `tasks.md` header already carries a `[KEY]` annotation or whose mapping row already exists (whichever Phase 0.5 captured).
+    Re-run safety: the protocol's hook honours the **Continue** / **Regenerate** mode set by Phase 0.5, skipping sections whose `tasks.md` header already carries a `[KEY]` annotation or whose mapping row already exists (whichever Phase 0.5 captured). Sections whose key step 19b assigned from a pre-existing work item are always skipped, including under Regenerate.
 
 ## Phase 5: Story-specific Summary Addendum
 
@@ -218,10 +216,11 @@ This works in two modes:
 - **Spec at story level, Tasks at goal level.** One OpenSpec change per story; one Jira Task per `## N.` section in `tasks.md`.
 - **Don't decompose by layer.** Goals are user-visible deliverables (panels, components, integrations). Layers (data, UI, state, errors, tests) ship together within each goal.
 - **`tasks.md` is canonical.** Tasks derive from it. If decomposition feels wrong, fix `tasks.md` first.
-- Each Task body MUST include a `Spec section:` line so `/sdd-work` Phase 1.5 can lazy-load the right spec without heuristic guessing.
+- Each Task created by this skill MUST include a `Spec section:` line so `/sdd-work` Phase 1.5 can lazy-load the right spec without heuristic guessing.
 - All goal Tasks are created via `CreateChildTickets` as board-visible Tasks (`jira.child_issue_type`) linked to the parent story via `jira.child_link_type` — **not** Jira Sub-tasks. `FetchTicket` resolves the parent story back from that link, so downstream skills still see a `parent`.
 - Re-run safety: default to Continue; require explicit Regenerate.
-- If the story is genuinely tiny (one goal), suggest `/opsx:propose` instead.
+- If the story is genuinely tiny (one goal), suggest `/openspec-propose` instead.
 - If too large for 2-6 Tasks, suggest splitting the story first.
-- **Audit before you spec.** Phase 1.6 is not optional in a mature codebase. AC items already met by existing code MUST NOT become `ADDED` requirements.
+- If the audit leaves zero `## N.` sections, stop before Phase 3 and report the story as already satisfied.
+- **Audit before you spec.** Phase 1.6 is not optional in a mature codebase. AC items already met by existing code MUST NOT produce Tasks.
 - **Other-team work items are context, never scope.** When a parent story has work items for other teams (BE/QA/design/etc.), their content informs `design.md` (API Integration section) but never produces spec scenarios or Tasks in this repo.

@@ -1,6 +1,6 @@
 # Codebase Audit Template
 
-Used by `/sdd-tasks-from-story` Phase 1.6 (and, in future, `/sdd-from-prd` and `/sdd-staged`) to audit the existing codebase for prior implementation of story AC items **before** generating specs. The audit drives whether each spec scenario lands as `ADDED` (genuinely new), `ADDED + remove existing` (partial — replace what's there), `MODIFIED` (locking in current behaviour), or omitted entirely.
+Used by `/sdd-tasks-from-story` Phase 1.6 (and, in future, `/sdd-from-prd` and `/sdd-staged`) to audit the existing codebase for prior implementation of story AC items **before** generating specs. The audit drives whether each spec scenario lands as `ADDED` (genuinely new), `ADDED + remove existing` (partial — replace what's there), `MODIFIED`/`ADDED` (locking in current behaviour; `MODIFIED` only if a living spec exists), or omitted entirely.
 
 Without this audit, a mature codebase produces specs that overstate scope: every AC becomes an `ADDED` requirement, every goal becomes a new Task, and `/sdd-work` re-discovers existing implementation mid-build.
 
@@ -28,7 +28,7 @@ Without this audit, a mature codebase produces specs that overstate scope: every
 3. **Classify** each AC item as:
    - **`new`** — no relevant code; AC becomes an `ADDED` spec scenario; work is needed.
    - **`partial`** — relevant code exists but doesn't fully satisfy the AC; AC becomes an `ADDED` spec scenario whose task list includes removing/changing the existing piece; the existing file paths are explicit inputs to `design.md`.
-   - **`done`** — code already satisfies the AC; AC becomes a `MODIFIED` requirement (to lock in the behaviour) or is **omitted** if the AC is a constitution-level invariant; no new task.
+   - **`done`** — code already satisfies the AC; AC becomes a `MODIFIED` requirement only when `openspec/specs/<capability>/spec.md` already has a requirement with the same header, otherwise an `ADDED` requirement (to lock in the behaviour) or is **omitted** if the AC is a constitution-level invariant; no new task.
 
 4. **Cross-team context.** For each other-team work item under the parent story:
    - Extract any API endpoint, contract, dependency, or environment-variable hints from its title and description.
@@ -44,7 +44,7 @@ Present a single matrix to the user:
 | # | AC item | Status | Files / current behaviour | Notes |
 |---|---------|--------|---------------------------|-------|
 | 1 | Single-button sign-in screen | partial | src/app/(auth)/login/page.tsx — currently shows email+password form | Form must be removed; replace with single button. |
-| 2 | Click redirects to provider SSO | done | src/app/api/auth/[...nextauth]/route.ts — Google provider already configured | No work needed. Lock in via MODIFIED scenario. |
+| 2 | Click redirects to provider SSO | done | src/app/api/auth/[...nextauth]/route.ts — Google provider already configured | No work needed. Lock in via spec scenario; no task. |
 | 3 | 16-hour session | new | src/lib/auth.ts — session.maxAge defaults to 30d | Set session.maxAge + jwt.maxAge to 16*60*60. |
 | 4 | Domain allow-list | new | (no current implementation) | Implement in signIn callback. |
 | 5 | Role-aware post-sign-in redirect | partial | src/middleware.ts — redirects authed users to /dashboard but is not role-aware | Extract to /post-signin server component or extend middleware. |
@@ -61,7 +61,7 @@ After printing the matrix, ask the user:
 
 > Does this match the codebase? Edit any row (status, files, notes), or proceed to spec generation.
 
-Accept inline corrections (e.g. *"row 2 is actually partial — there's a stale credentials provider still wired in `src/lib/auth-credentials.ts`"*). The audit is **in-memory input to Phase 2** — it does not get written to disk in the change directory. (Phase 2 may optionally persist it to `openspec/changes/<change>/.audit.md` for `/sdd-work` to consult later, but this template does not require it.)
+Accept inline corrections (e.g. *"row 2 is actually partial — there's a stale credentials provider still wired in `src/lib/auth-credentials.ts`"*). The audit is **in-memory input to Phase 2** — it does not get written to disk in the change directory.
 
 ## Rules
 

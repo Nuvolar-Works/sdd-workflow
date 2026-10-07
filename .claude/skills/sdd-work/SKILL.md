@@ -35,20 +35,23 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 
 6. If on the base branch (`develop` or `main`) → **Fresh** mode. Continue at Phase 1.
 
-7. Otherwise the branch has commits. Check for an existing PR:
+   If not on the base branch, extract the ticket id from the branch name (same rule as `/sdd-verify` step 5). If it differs from `$ARGUMENTS`, stop and ask: switch to the base branch (Fresh) or abort.
+
+7. Otherwise, check for an existing PR (read-only, run directly):
    ```bash
-   gh pr view --json state,reviewDecision,reviewThreads,comments  ← GitHub
+   gh pr view --json number,state,reviewDecision,reviews,comments,url
    ```
-   For projects on Jira-only tracking with `vcs: "github"`, the PR check uses `gh` regardless of tracker (PRs live in GitHub).
+   Treat "no pull requests found" as "No PR yet". The PR check uses `gh` regardless of tracker (PRs live in GitHub).
 
 8. **Mode selection**:
 
    | State | Mode | Behavior |
    |-------|------|----------|
-   | No PR yet, branch has commits | **Resume** | Skip Phase 2 (codebase research) and the plan-confirmation prompt. Re-state acceptance criteria status from existing commits. Continue at Phase 1 with light context. |
+   | No PR yet (with or without commits) | **Resume** | Skip Phase 2 (codebase research) and the plan-confirmation prompt. Re-state acceptance criteria status from existing commits. Continue at Phase 1 with light context. |
    | PR open, no review feedback | **Resume** | Same as above. |
-   | PR open with `reviewDecision = CHANGES_REQUESTED` or `comments` containing review threads needing reply | **Fix-from-PR** | Fetch review threads via `gh pr view --json reviewThreads`. Sync them to the ticket as a Clarification comment (opt-in via Phase 3.5 prompts later). Skip Phase 2's codebase research; present a focused fix plan. |
-   | PR open and merged | tell the user the work is done; suggest running `/sdd-status` to archive the change. Stop. |
+   | PR open with `reviewDecision = CHANGES_REQUESTED` or `reviews`/`comments` needing reply | **Fix-from-PR** | Use `reviews`/`comments` from step 7; fetch inline file:line comments via `gh api repos/{owner}/{repo}/pulls/<n>/comments`. Sync them to the ticket as a Clarification comment (opt-in via Phase 3.5 prompts later). Skip Phase 2's codebase research; present a focused fix plan. |
+   | PR merged | — | Tell the user the work is done; suggest running `/sdd-status` to archive the change. Stop. |
+   | PR closed (not merged) | — | Stop and ask the user how to proceed. |
 
    Announce the detected mode:
    ```
@@ -61,9 +64,9 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 
 ## Phase 1: Understand the Ticket
 
-10. Run `FetchTicket($ARGUMENTS)` and `AssignTicket($ARGUMENTS, "@me")` from the active tracker recipe. Hold the ticket payload (title, body, labels, status, parent) in context.
+10. Run `FetchTicket($ARGUMENTS)` and `AssignTicket($ARGUMENTS, "@me")` from the active tracker recipe (when `DRY_RUN`, print `[DRY RUN] would AssignTicket(...)` instead). Hold the ticket payload (title, body, labels, status, parent) in context.
 
-11. Read the body. Identify what to build, AC, dependencies, implementation hints. If dependencies are open, warn the user and ask whether to proceed.
+11. Read the body. Identify what to build, AC, `## Definition of Done` items (if present), dependencies, implementation hints. If dependencies are open, warn the user and ask whether to proceed.
 
 12. Detect a linked OpenSpec change via the `Source:` footer:
     ```
@@ -71,21 +74,21 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
     ```
     If found, extract `<CHANGE_NAME>`. If not, skip Phase 1.5.
 
-13. Optionally call `UpdateTicketStatus($ARGUMENTS, "in_progress")` (Jira: real transition; GitHub: no-op). When `DRY_RUN`, print the intended call.
+13. Fresh mode only: call `UpdateTicketStatus($ARGUMENTS, "in_progress")` (Jira: real transition; GitHub: no-op). If the transition is unavailable, warn and continue. When `DRY_RUN`, print the intended call.
 
 ## Phase 1.5: OpenSpec Context (lazy, only if linked)
 
-14. Open `openspec/changes/<CHANGE_NAME>/tasks.md`. Find the section header containing the ticket id. Note the section title.
+14. Open `openspec/changes/<CHANGE_NAME>/tasks.md`. Find the section header carrying the exact annotation `(#<id>)` (GitHub) or `[<KEY>]` (Jira). Note the section title.
 
 15. **Locate the relevant spec file**, in order of preference:
-    a. Read the `Spec section:` footer in the ticket body — tickets created by `/sdd-tasks-from-story` carry an explicit pointer. When present, use it without prompting.
-    b. Heuristic fallback when no footer: glob `specs/*.md` and score each by keyword overlap with the section title.
+    a. Read the `Spec section:` footer in the ticket body — tickets created via `sdd/templates/ticket-creation-protocol.md` carry an explicit pointer. When present, use it without prompting.
+    b. Heuristic fallback when no footer: glob `openspec/changes/<CHANGE_NAME>/specs/*/spec.md` and score each by keyword overlap with the section title.
        - **Single match** (one file has any hits): use it.
        - **Clear winner** (top file's score ≥ 2× the runner-up's): use it; note "spec inferred from <file> — confirm if wrong" in the plan in Phase 2.
        - **Ambiguous** (top two scores within 1 of each other, or two+ files tied at the top): list the top 2–3 candidates with their scores and ask: "Multiple specs match this section. Which one is correct? (1/2/3/none — describe instead)". Do not silently pick.
        - **No match**: tell the user no spec maps cleanly to this ticket and ask whether to proceed without a spec context or pick one manually.
 
-16. Extract only the relevant section of `design.md` via grep. Do NOT read the whole file.
+16. If the body has `## Design Excerpt`, use it; otherwise extract only the relevant section of `design.md` via grep. Do NOT read the whole file.
 
 17. Read `proposal.md` (it's short).
 
@@ -120,7 +123,7 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
     - `sdd/constitution/folder-structure.md`
     - `sdd/constitution/quality-gates.md`
 
-    Legacy fallback: `docs/constitution.md`. Skip if neither exists.
+    Legacy fallback: `docs/constitution.md` if `sdd/constitution/index.md` is absent. Skip if neither exists.
 
 ## Phase 2: Plan
 
@@ -206,13 +209,9 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 
 30. Implement the changes following the plan. Follow existing patterns. Add or update tests if AC requires. Keep changes focused.
 
-31. Run project checks if configured:
-    ```bash
-    npm test 2>&1 || true
-    npm run lint 2>&1 || true
-    npm run build 2>&1 || true
-    ```
-    Fix issues these surface. If tests still fail after fix attempts, ask the user: "Tests still failing — keep iterating, save progress and stop, or skip?"
+31. Run the gate commands listed in `sdd/constitution/quality-gates.md`, in order; if absent, fall back to `npm test` / `npm run lint` / `npm run build` for the scripts that exist in `package.json`. Append `; echo "exit=$?"` to each command; exit 0 → PASS, non-zero → FAIL, undefined script → NOT CONFIGURED.
+
+    Fix issues these surface. If any check still fails after fix attempts, ask the user: "Checks still failing (<names>) — keep iterating, or save progress and stop? (/sdd-verify will not open a PR while a check fails.)"
 
 ## Phase 3.5: Record Discoveries
 
@@ -222,8 +221,6 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
     - Drafting via `sdd/templates/ticket-comment-shapes.md`.
     - For Blockers / Follow-ups: second prompt for `CreateRelatedTicket` linked to the parent story (or current ticket if no parent).
     - State tracking (decisions / blockers / follow-ups / clarifications) for the Phase 4.5 closing summary.
-
-    When `DRY_RUN`: prompts still fire; on `yes` or `edit`, the draft is shown but `[DRY RUN] would CommentOnTicket(...)` replaces the actual post.
 
 ## Phase 4: Commit and Verify
 
@@ -254,7 +251,7 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 
 38. Show the draft. Ask: "Post this summary to the ticket before handing off to /sdd-verify? (yes / edit / skip)"
 
-39. On `yes` / `edit`, run `CommentOnTicket($ARGUMENTS, <body>)`. When `DRY_RUN`, print `[DRY RUN] would CommentOnTicket(...)`.
+39. On `yes` / `edit`, run `CommentOnTicket($ARGUMENTS, <body>)`.
 
 ## Phase 5: Hand Off
 
@@ -263,9 +260,11 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
     Implementation complete! Run /sdd-verify to review the changes and create a PR.
     ```
 
+    If a check was left failing at step 31, list the failing checks instead of "Implementation complete!".
+
     In **Fix-from-PR mode**, the PR already exists. Adjust the message:
     ```
-    Fix commits pushed locally. Run /sdd-verify to re-run checks and update the PR.
+    Fix commits are committed locally. Run /sdd-verify to re-run checks and push them to the existing PR.
     ```
 
 ## Rules
@@ -274,7 +273,7 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 - Granular commits, conventional format, ticket reference in every commit message.
 - Do NOT push the branch — that's `/sdd-verify`'s job.
 - Do not add features beyond what the ticket asks for.
-- Use abstract operation names from `sdd/trackers/protocol.md`; never embed `gh` or MCP calls inline.
+- Use abstract operation names from `sdd/trackers/protocol.md`; never embed `gh` or MCP calls inline. Exception: read-only lookups of the current branch's PR (`gh pr view`, and its inline review comments via `gh api`) in Phase 0.5.
 - Read constitution and OpenSpec artifacts **lazily** — load only sections relevant to this specific ticket.
 - The skill **never** updates `openspec/changes/<change>/tasks.md` checkbox state. `/sdd-verify` checks off the current ticket's section (so it ships in the feature PR); `/sdd-status` Class C reconciles any drift.
 - `--dry-run` halts the skill after Phase 2 (the plan). Code edits, branch creation, and commits don't happen in dry-run mode. Tracker writes are mocked.

@@ -43,8 +43,9 @@ for f in "${TOP_LEVEL[@]}"; do
   fi
 done
 
-# Tracker recipes
+# Tracker recipes (remove stale seed copies first so deleted/renamed files don't linger)
 mkdir -p "$SEED_DIR/trackers"
+rm -f "$SEED_DIR"/trackers/*.md
 for src in "$SDD_DIR"/trackers/*.md; do
   [[ -f "$src" ]] || continue
   cp "$src" "$SEED_DIR/trackers/"
@@ -53,6 +54,7 @@ done
 
 # Shared templates
 mkdir -p "$SEED_DIR/templates"
+rm -f "$SEED_DIR"/templates/*.md
 for src in "$SDD_DIR"/templates/*.md; do
   [[ -f "$src" ]] || continue
   cp "$src" "$SEED_DIR/templates/"

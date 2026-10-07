@@ -1,21 +1,17 @@
 ---
 name: sdd-constitution
-description: Generate or update a project constitution — coding standards, architectural rules, and quality gates split across files in sdd/constitution/ that all SDD and OpenSpec skills enforce.
+description: Generate or update a project constitution — coding standards, architectural rules, and quality gates split across files in sdd/constitution/ that the SDD skills enforce.
 argument-hint: "[project-name] [--dry-run]"
 disable-model-invocation: true
 ---
 
-## Input
-
-`$ARGUMENTS` parsed for an optional project name (used in the title) and an optional `--dry-run`. When `--dry-run`: the interview still runs and the file contents are drafted to the chat for review, but **no files are written**. Re-run without `--dry-run` to commit the constitution to disk.
-
 # Generate Project Constitution
 
-You are creating or updating the project constitution — a living document split across files in `sdd/constitution/` that defines coding standards, architectural rules, and quality gates. All SDD and OpenSpec skills load only the section files they need at the time they need them.
-
 ## Input
 
-Project name: `$ARGUMENTS` (optional — used in the document title; defaults to the repo name)
+`$ARGUMENTS` parsed for an optional project name (used in the title; defaults to the repo name) and an optional `--dry-run`. When `--dry-run`: the interview still runs and the file contents are drafted to the chat for review, but **no files are written**. Re-run without `--dry-run` to commit the constitution to disk.
+
+You are creating or updating the project constitution — a living document split across files in `sdd/constitution/` that defines coding standards, architectural rules, and quality gates. SDD skills load only the section files they need at the time they need them.
 
 ## Phase 1: Gather Project Context
 
@@ -68,7 +64,7 @@ Project name: `$ARGUMENTS` (optional — used in the document title; defaults to
 
 6. Write **`sdd/constitution/index.md`** with:
    - The Sync Impact Report HTML comment block at the top (version 0.0.0 → 1.0.0 for a new constitution; bump appropriately for an update).
-   - A short table of contents listing the section files and which skills read them (see existing example for shape).
+   - A short table of contents (one row per section file: file, purpose, read by).
    - A Governance section (the constitution supersedes other conventions; amendments require a PR with updated Sync Impact Report; one approver minimum).
    - The version + ratified + last-amended footer.
 
@@ -91,7 +87,7 @@ Project name: `$ARGUMENTS` (optional — used in the document title; defaults to
    - Any nested rules (i18n hook conventions, variable naming, etc.) the user specified.
 
 10. Write **`sdd/constitution/quality-gates.md`** with:
-    - The numbered list of NON-NEGOTIABLE quality gates (`npm run lint`, `npm run build`, type-check, tests, coverage threshold, RBAC verification).
+    - The numbered list of NON-NEGOTIABLE quality gates, each with the exact command in backticks (e.g. `npm run lint`, `npm run build`, `npx tsc --noEmit`, `npm test`), plus coverage threshold and RBAC verification where applicable.
     - Error handling rules.
     - Specification / Plan / Task content requirements.
     - Development workflow notes (cross-reference CLAUDE.md for git conventions instead of duplicating them).
@@ -100,9 +96,9 @@ Project name: `$ARGUMENTS` (optional — used in the document title; defaults to
     - Color tokens (table: token, use case, opacity variants).
     - Migration rules (legacy classes → semantic tokens).
     - Font, shadow scale, border radius, animations, dark mode, header controls, sidebar conventions.
-    - Skip this file if the project has no UI / design system.
+    - Skip this file if the project has no UI / design system. If skipping it and one exists from a previous version, ask whether to remove it; in dry-run, note it.
 
-12. If the project has shared utilities with mandatory usage rules, write **`sdd/constitution/utilities.md`** with each rule and the import path that must be used.
+12. If the project has shared utilities with mandatory usage rules, write **`sdd/constitution/utilities.md`** with each rule and the import path that must be used. If skipping this file and one exists from a previous version, ask whether to remove it; in dry-run, note it.
 
 13. Tailor every section to the project. Do NOT pad with generic best-practices content. If a section would be empty for this project, skip it and remove the corresponding row from `index.md`'s table of contents.
 
@@ -120,7 +116,7 @@ Project name: `$ARGUMENTS` (optional — used in the document title; defaults to
 15. If a legacy `docs/constitution.md` exists and the user did not opt into starting fresh:
     - Confirm with the user that they want to remove the legacy file (since the split version is now in place).
     - If yes, `git rm docs/constitution.md` (or note it in the user-facing summary so they can do it manually).
-    - If no, leave it in place — skills will fall back to the legacy file if `sdd/constitution/` is not yet present.
+    - If no, leave it in place — skills will fall back to the legacy file if `sdd/constitution/index.md` is not yet present.
 
     When `DRY_RUN`: skip this phase entirely. The user can run again without `--dry-run` to commit the new constitution and then rerun once more to migrate the legacy file.
 
@@ -143,9 +139,10 @@ Project name: `$ARGUMENTS` (optional — used in the document title; defaults to
     Version: 1.0.0
 
     Loaded by:
-    - /sdd-from-prd and /sdd-staged — tech-stack.md + folder-structure.md
+    - /sdd-from-prd — tech-stack.md + folder-structure.md
+    - /sdd-staged — tech-stack.md + folder-structure.md + quality-gates.md
     - /sdd-work — principles.md + folder-structure.md + quality-gates.md
-    - /sdd-verify — principles.md + quality-gates.md (+ design-system.md when UI changes, utilities.md when API client changes)
+    - /sdd-verify — principles.md + quality-gates.md (+ design-system.md if changed files include UI components or route files, utilities.md if changed files touch the API client or shared data-shape utilities)
     - /sdd-tasks-from-story — tech-stack.md + folder-structure.md
 
     To update the constitution later, run /sdd-constitution again.

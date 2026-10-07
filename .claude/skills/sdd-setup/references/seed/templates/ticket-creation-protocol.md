@@ -18,7 +18,7 @@ The calling skill provides:
 ```
 Read change_dir/tasks.md
 Read change_dir/proposal.md
-Read change_dir/specs/*.md (via glob)
+Read change_dir/specs/*/spec.md (via glob)
 Read change_dir/design.md
 Optional: read change_dir/api-contract.yaml when present.
 ```
@@ -36,15 +36,15 @@ For each section, derive:
 | Field | Rule |
 |-------|------|
 | **Title** | Section name verbatim (e.g. "Database Layer", "Clock-in panel"). Optionally prefix with team-area convention (e.g. "Frontend: Clock-in panel"). |
-| **Type** | First match of these section-title keywords:<br>- `setup`, `config`, `infrastructure`, `init` → `chore`<br>- `test`, `tests` → `test`<br>- `docs`, `documentation` → `docs`<br>- `refactor` → `refactor`<br>- `fix`, `bug` → `fix`<br>- otherwise → `feat` |
+| **Type** | Work items (`is_work_item=true`): derive from the DoD goal type (Setup → `chore`, Refactor → `refactor`, Test → `test`, otherwise → `feat`). Otherwise, first match of these section-title keywords (whole words, case-insensitive):<br>- `setup`, `config`, `infrastructure`, `init` → `chore`<br>- `test`, `tests` → `test`<br>- `docs`, `documentation` → `docs`<br>- `refactor` → `refactor`<br>- `fix`, `bug` → `fix`<br>- otherwise → `feat` |
 | **Priority** | By section order: first third → `high`, middle third → `medium`, last third → `low`. Override if the section description explicitly states a priority. |
 | **Labels** | Kebab-case section name plus the type. Plus any stage label (`stage-NN-<slug>`) if the calling skill is staged. Plus `follow-up` if created by `CreateRelatedTicket`. |
-| **Acceptance Criteria** | Match GIVEN-WHEN-THEN scenarios from the relevant `specs/*.md` file (heuristic: section-title keyword match). If no scenario matches, derive 2-4 criteria from the section's subtasks. |
+| **Acceptance Criteria** | Match GIVEN-WHEN-THEN scenarios from the relevant `specs/<capability>/spec.md` file (heuristic: section-title keyword match). If no scenario matches, derive 2-4 criteria from the section's subtasks. |
 | **Implementation Hints** | Relevant excerpts from `design.md` for this section's scope. |
 | **Design Excerpt** | (work-item only — `is_work_item=true`) 5-15 line quote from the relevant section of `design.md` including its heading. |
-| **API Integration** | (work-item only) Include the section iff goal type is **Integration** per `sdd/templates/definition-of-done.md` § Goal-type detection. Body: endpoint signature + request/response shape from `api-contract.yaml`. |
-| **Definition of Done** | (work-item only) Determine goal type via `sdd/templates/definition-of-done.md` § Goal-type detection, then pull the matching block per § Blocks. Apply the inline-vs-reference rule from § Inlining vs reference (Setup / Refactor get a one-line reference; UI / Integration / Test get the full inlined block). |
-| **Dependencies** | Tickets created in earlier sections this run. Use real ids captured from previous `CreateTicket` returns. For a fresh first section, `None`. |
+| **API Integration** | (work-item only) Include the section iff goal type is **Integration** per `sdd/templates/definition-of-done.md` § Goal-type detection. Body: endpoint signature + request/response shape from `api-contract.yaml` when present, otherwise from `design.md` § API Integration; omit the section if neither has endpoint details. |
+| **Definition of Done** | (work-item only) Determine goal type via `sdd/templates/definition-of-done.md` § Goal-type detection, then pull the matching block per § Blocks. Apply the inline-vs-reference rule from § Inlining vs reference (Setup / Refactor get a one-line reference; UI / Integration / Test / Generic get the full inlined block). |
+| **Dependencies** | Ids of earlier sections this section actually needs (per `tasks.md`/`design.md`), whether created this run or captured as existing; `None` if independent. Always ids. |
 
 ## Step 4: Build the ticket body
 
@@ -70,7 +70,7 @@ Endpoint: <METHOD path>
 Request shape: <key fields>
 Response shape: <key fields>
 Error responses: <code → meaning>
-Source: openspec/changes/<change>/api-contract.yaml
+Source: <api-contract.yaml or design.md § API Integration>
 
 ## Definition of Done                    ← work-item only
 <DoD block from definition-of-done.md>
@@ -79,11 +79,11 @@ Source: openspec/changes/<change>/api-contract.yaml
 <Comma-separated prior ticket ids, or "None">
 
 ---
-Spec section: openspec/changes/<change>/specs/<file>.md   ← work-item only
+Spec section: openspec/changes/<change>/specs/<capability>/spec.md
 Source: openspec/changes/<change>/tasks.md (section <N>)
 ```
 
-The trailing footer is mandatory on every ticket. `/sdd-work` Phase 1.5 reads `Spec section:` to lazy-load the relevant spec without scanning all files.
+The trailing footer is mandatory on every ticket; `Spec section:` names the spec file chosen in Step 3. `/sdd-work` Phase 1.5 reads `Spec section:` to lazy-load the relevant spec without scanning all files.
 
 ## Step 5: Ensure labels exist
 
@@ -104,11 +104,11 @@ else:
     capture id for downstream sections
 ```
 
-For `/sdd-tasks-from-story` (`is_work_item=true`), use a single batched `CreateChildTickets(parent_id, payloads)` call instead of N individual creates when the recipe supports it. Falls back to per-payload if needed. (For Jira, `CreateChildTickets` creates a board-visible Task per payload and links it to the parent story — see `sdd/trackers/jira.md`.)
+For Jira, `CreateChildTickets` creates a board-visible Task per payload and links it to the parent story — see `sdd/trackers/jira.md`.
 
 ## Step 7: Update OpenSpec tasks.md with ticket annotations
 
-After each successful create, append the ticket id to the section header in `tasks.md`:
+After each successful create, append the ticket id to the section header in `tasks.md` (if the header already carries an id annotation, replace it instead of appending):
 ```
 ## 1. Setup (#42)         ← GitHub
 ## 1. Setup [TT-457]      ← Jira
@@ -120,7 +120,7 @@ When `dry_run`: don't write to `tasks.md`. Print the intended annotation.
 
 ## Step 8: Write mapping file
 
-Append a row to `sdd/tasks/<change_name>.md`:
+(Re)write `sdd/tasks/<change_name>.md` with one row per section that has an id after this run (both `existing` and `new`):
 
 ```markdown
 # Issue Mapping: <change-name>
@@ -131,12 +131,12 @@ Generated: <YYYY-MM-DD>
 
 | Section | Ticket | Title | Type | Priority | Depends On | Spec Section |
 |---------|--------|-------|------|----------|------------|--------------|
-| 1       | <id>   | ...   | feat | high     | none       | <file.md>    |
+| 1       | <id>   | ...   | feat | high     | none       | <capability>/spec.md |
 ```
 
-The `Spec Section` column applies to linked work-item tickets (those carry `Spec section:` footers); for top-level tickets the column may show the OpenSpec change's primary spec or be empty. The `Tracker` line at the top reflects the active `sdd/config.json` `tracker` value.
+The `Spec Section` column always mirrors the ticket's `Spec section:` footer. The `Tracker` line at the top reflects the active `sdd/config.json` `tracker` value.
 
-When `dry_run`: write the mapping locally (revertable via git). The synthetic `DRY-N` ids appear in the mapping so the user can preview the shape.
+When `dry_run`: do not write the mapping file; print the would-be table (with synthetic `DRY-N` ids).
 
 ## Step 9: Print summary
 
@@ -160,4 +160,6 @@ When `dry_run`: prefix the heading with `[DRY RUN] `. Replace ticket ids with `D
 
 When the calling skill's Phase 0.5 detected existing tickets and the user chose **Continue**, this protocol must skip create operations for sections that already have a captured ticket id (from `tasks.md` annotations or the mapping file). Mark those sections in the summary as `existing` rather than `new`.
 
-When the user chose **Regenerate**, the calling skill has already deleted or marked-for-overwrite the existing artifacts; this protocol creates fresh tickets and updates the mapping. The old ticket ids are reported in the summary with `replaced by <new id>`.
+Sections whose key the caller assigned from a pre-existing work item this run are always skipped, including under **Regenerate**.
+
+When the user chose **Regenerate**, this protocol creates fresh tickets, then calls `CloseTicket(<old>, "Replaced by <new>")` for each old ticket (no deletion), and rewrites the mapping. The old ticket ids are reported in the summary with `replaced by <new id>`.

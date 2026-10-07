@@ -1,6 +1,6 @@
 # Design Challenge Template
 
-Used by `/sdd-from-prd`, `/sdd-staged`, and `/opsx:propose` after artifact generation but before tickets are created. The point is to act as a devil's-advocate review before committing to a build plan.
+Used by `/sdd-from-prd`, `/sdd-staged`, and `/sdd-tasks-from-story` after artifact generation but before tickets are created. The point is to act as a devil's-advocate review before committing to a build plan.
 
 ## Output shape
 
@@ -33,6 +33,6 @@ Used by `/sdd-from-prd`, `/sdd-staged`, and `/opsx:propose` after artifact gener
 
 After presenting the challenge, ask the user:
 
-> Want to adjust any of `design.md`, `specs/*.md`, or `tasks.md` before I create tickets, or proceed as-is?
+> Want to adjust any of `design.md`, `specs/*/spec.md`, or `tasks.md` before I create tickets, or proceed as-is?
 
 If the user requests changes, update the relevant artifacts and present a one-line diff summary, then re-ask. Don't create tickets until the user explicitly proceeds.
