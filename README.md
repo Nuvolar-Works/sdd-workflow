@@ -13,6 +13,7 @@ Supports three tracker modes: **GitHub-only**, **Jira-only**, and **Hybrid** (Ji
 | [Claude Code](https://claude.ai/claude-code) | `npm install -g @anthropic-ai/claude-code` | AI coding agent with skills and hooks |
 | [GitHub CLI](https://cli.github.com/) | `brew install gh` then `gh auth login` | Issue creation, PR management (GitHub mode) |
 | [OpenSpec](https://github.com/Fission-AI/OpenSpec) | `npm install -g @fission-ai/openspec@latest` | Specification generation and management |
+| [jq](https://jqlang.github.io/jq/) | `brew install jq` | Used by the conventional-commit hook |
 | Jira MCP (optional) | Configure via `/sdd-setup` | Jira story and linked-task management (Jira/Hybrid mode) |
 
 ## Quick Start
@@ -31,6 +32,39 @@ cd my-project
 # Run a pre-flight check before starting work
 /sdd-doctor
 ```
+
+Adding the workflow to a codebase you already have? See [Installing into an Existing Repo](#installing-into-an-existing-repo).
+
+## Installing into an Existing Repo
+
+**1. Copy the skills and the commit hook** from a local clone of this repo:
+
+```bash
+SRC=/path/to/sdd-workflow
+cd /path/to/your-project
+
+mkdir -p .claude/skills .claude/hooks
+cp -R "$SRC"/.claude/skills/sdd-* "$SRC"/.claude/skills/openspec-* .claude/skills/
+cp "$SRC"/.claude/hooks/validate-commit-msg.sh .claude/hooks/
+```
+
+You don't need to copy `sdd/` — `/sdd-setup` seeds it from its own bundle.
+
+**2. Merge (don't overwrite)** into files your repo may already have:
+
+| File | What to add |
+|------|-------------|
+| `.claude/settings.json` | The `PreToolUse` hook entry from [.claude/settings.json](.claude/settings.json). If you already have a `hooks.PreToolUse` array, append to it. |
+| `CLAUDE.md` | The *Workflow Quick Reference*, *Review Gates*, *Git Conventions* and *Code Conventions* sections from [CLAUDE.md](CLAUDE.md). Keep your own project sections (commands, architecture, etc.). |
+| `.gitignore` | `.claude/settings.local.json` |
+
+`.mcp.json` needs no manual merge — `/sdd-setup` appends to it.
+
+**3. Run setup** — `/sdd-setup`, `/sdd-constitution`, `/sdd-doctor`, as in [Quick Start](#quick-start). On an existing codebase `/sdd-constitution` detects your stack from `package.json`, build configs and folder structure; review its proposal rather than writing standards from scratch.
+
+**Check before you start:**
+- **Base branch** — `/sdd-setup` asks which branch feature PRs target (`develop` by default). If you're trunk-based, pick `main` and update the branching line in your `CLAUDE.md` to match.
+- **Commit hook** — blocks commits *made by Claude* that don't follow conventional commits. Your own terminal commits are unaffected. Requires `jq`.
 
 ## Project Setup
 
