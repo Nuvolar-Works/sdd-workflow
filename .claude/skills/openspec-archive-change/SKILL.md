@@ -67,15 +67,11 @@ Archive a completed change in the experimental workflow.
 
 5. **Perform the archive**
 
-   ```bash
-   openspec archive "<name>" --yes
-   ```
-
-   Add `--skip-specs` if the user chose "Archive without syncing" or "Archive now" (already synced); stop on "Cancel". The CLI applies the delta specs to `openspec/specs/` and moves the change to `openspec/changes/archive/YYYY-MM-DD-<name>/`. If it fails (e.g. the target already exists), show the error and stop.
+   Follow `sdd/README.md` § Archiving (pre-flight, snapshot, `openspec archive "<name>" --yes`, on-disk success check, rollback). Add `--skip-specs` if the user chose "Archive without syncing" or "Archive now" (already synced); stop on "Cancel". The CLI applies the delta specs to `openspec/specs/` and moves the change to `openspec/changes/archive/YYYY-MM-DD-<name>/`. If pre-flight or the archive fails, show the error and stop — the procedure has already rolled back `openspec/specs/`.
 
    **Archive the SDD mapping (if present):**
 
-   If `sdd/tasks/<name>.md` exists, the change has a tracker-side mapping that `/sdd-doctor` Check #9 will flag as an orphan once the change directory has moved. Ask via **AskUserQuestion**:
+   Only after the archive succeeded: if `sdd/tasks/<name>.md` exists, the change has a tracker-side mapping that `/sdd-doctor` Check #9 will flag as an orphan once the change directory has moved. Ask via **AskUserQuestion**:
 
    - **Archive the mapping too (recommended)** — rename to `sdd/tasks/<name>.archived.md` so the doctor knows to skip it.
      ```bash
