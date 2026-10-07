@@ -63,7 +63,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (fallbacks: `sdd/prds/<fea
 11. Extract: Problem, Goals & Non-Goals, User Stories, UI/UX, Technical Considerations, Dependencies.
 12. Check `## API Contract`. If present:
     - Local file: read it. URL: WebFetch. On failure, ask whether to proceed without.
-    - Parse and hold an **API Summary** in context (title, version, base URL, auth, relevant endpoints, schemas).
+    - Parse it (OpenAPI, GraphQL SDL, `.proto`, AsyncAPI, …) and hold an **API Summary** in context (title, version, base URL, auth, relevant operations, schemas).
 13. Assess if staging is appropriate. With only 1-2 user stories, suggest `/sdd-from-prd <feature-slug>-v1`. If user wants staging, continue.
 
 ## Phase 1.5: Read Constitution Sections
@@ -98,7 +98,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (fallbacks: `sdd/prds/<fea
        openspec new change "$CHANGE_NAME"
        ```
 
-    c. If this is the first API-consuming stage and an API Contract exists, copy the Swagger source to `openspec/changes/$CHANGE_NAME/api-contract.yaml`.
+    c. If this is the first API-consuming stage and an API Contract exists, copy the contract source to `openspec/changes/$CHANGE_NAME/api-contract.<ext>` (keeping the source's extension).
 
     d. Get artifact build order: `openspec status --change "$CHANGE_NAME" --json`.
 

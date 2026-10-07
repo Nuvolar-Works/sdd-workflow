@@ -116,6 +116,7 @@ If `git status --porcelain` is non-empty, list the files and ask the user to eit
     - Error handling: CLEAN / <issues>
     - Design alignment: CLEAN / N/A / <deviations>
     - Constitution compliance: CLEAN / N/A / <violations>
+    - Contract fidelity: CLEAN / N/A / <issues>
     - Stray files: CLEAN / <removed or kept paths>
 
     ### Project Checks (one row per gate run in step 17)

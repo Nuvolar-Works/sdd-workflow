@@ -70,8 +70,8 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
     - If present, extract the reference (file path or URL).
       - Local file: read it. If not found, warn and ask whether to proceed without it.
       - URL: fetch via WebFetch. If fetch fails, warn and ask whether to proceed without it.
-    - Parse Swagger/OpenAPI and extract an **API Summary** (title, version, base URL, auth, relevant endpoints, schemas).
-    - Hold the **API Summary** in context — not the raw Swagger.
+    - Parse the contract (OpenAPI, GraphQL SDL, `.proto`, AsyncAPI, …) and extract an **API Summary** (title, version, base URL, auth, relevant operations, schemas).
+    - Hold the **API Summary** in context — not the raw contract.
 
 ## Phase 1.5: Read Constitution Sections
 
@@ -91,7 +91,7 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
     openspec new change "$CHANGE_NAME"
     ```
 
-17. If an API Contract source file/URL was found, copy the source into the change folder (`api-contract.yaml` or `.json`). This file is reference material; it is NOT processed by openspec.
+17. If an API Contract source file/URL was found, copy the source into the change folder as `api-contract.<ext>`, keeping the source's extension. This file is reference material; it is NOT processed by openspec.
 
 18. Get the artifact build order:
     ```bash
@@ -148,6 +148,6 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
 - Respect Non-Goals.
 - If the PRD is vague, ask rather than guess.
 - Use abstract operation names from `sdd/trackers/protocol.md`.
-- The Swagger/OpenAPI doc is supplementary; PRD wins for scope. Don't generate tasks for endpoints not referenced by any PRD user story.
+- The API contract is supplementary; PRD wins for scope (the contract wins on shape — see `sdd/README.md` § Interface contracts). Don't generate tasks for operations not referenced by any PRD user story.
 - Re-run safety in Phase 0.5 prevents silent overwrites. Default to Continue; require explicit Regenerate.
 - If any step fails, stop and report clearly.

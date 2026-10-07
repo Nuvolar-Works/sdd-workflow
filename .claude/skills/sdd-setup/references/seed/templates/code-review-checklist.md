@@ -42,6 +42,13 @@ Used by `/sdd-verify` for the code-review step. Each section produces either CLE
 - Only if changed files include UI components or route files, also load `sdd/constitution/design-system.md` (if the file exists) and check colour tokens, font, shadow scale, border radius, dark-mode support.
 - Only if changed files touch the API client or shared data-shape utilities, also load `sdd/constitution/utilities.md` (if the file exists; e.g. query param serialization rules).
 
+## 7. Contract fidelity (only if an interface contract resolves per `sdd/README.md` § Interface contracts and the diff produces or consumes that interface or its test doubles)
+
+- Every operation, field, enum value and outcome the changed code uses exists in the contract with the same name, type and optionality. Flag anything invented beyond it ("the other side might send it").
+- Test doubles (mocks, stubs, fakes, fixtures, recorded responses) return the contract's shape and only outcomes it documents (responses, error codes, events). A double that returns an outcome the real interface never produces hides bugs behind green tests.
+- Where the contract is untyped or opaque, the code or PR body says where the shape came from (advisory).
+- If this repo commits the contract it publishes, implementation and contract agree, and any contract change ships in the same PR.
+
 ## Output shape
 
 Report results in this format:
@@ -55,4 +62,5 @@ Report results in this format:
 - Error handling: CLEAN / <issues>
 - Design alignment: CLEAN / N/A / <deviations>
 - Constitution compliance: CLEAN / N/A / <violations>
+- Contract fidelity: CLEAN / N/A / <issues>
 ```

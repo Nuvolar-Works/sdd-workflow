@@ -20,7 +20,7 @@ Read change_dir/tasks.md
 Read change_dir/proposal.md
 Read change_dir/specs/*/spec.md (via glob)
 Read change_dir/design.md
-Optional: read change_dir/api-contract.yaml when present.
+Optional: read change_dir/api-contract.* when present.
 ```
 
 ## Step 2: Group tasks by section header
@@ -42,7 +42,7 @@ For each section, derive:
 | **Acceptance Criteria** | Match GIVEN-WHEN-THEN scenarios from the relevant `specs/<capability>/spec.md` file (heuristic: section-title keyword match). If no scenario matches, derive 2-4 criteria from the section's subtasks. |
 | **Implementation Hints** | Relevant excerpts from `design.md` for this section's scope. |
 | **Design Excerpt** | (work-item only — `is_work_item=true`) 5-15 line excerpt from the relevant section of `design.md`, as plain paragraphs with the source heading as a bold lead-in. |
-| **API Integration** | (work-item only) Include the section iff goal type is **Integration** per `sdd/templates/definition-of-done.md` § Goal-type detection. Body: endpoint signature + request/response shape from `api-contract.yaml` when present, otherwise from `design.md` § API Integration; omit the section if neither has endpoint details. |
+| **API Integration** | (work-item only) Include the section iff goal type is **Integration** per `sdd/templates/definition-of-done.md` § Goal-type detection. Body: endpoint signature + request/response shape from `api-contract.*` when present, otherwise from `design.md` § API Integration; omit the section if neither has endpoint details. |
 | **Definition of Done** | (work-item only) Determine goal type via `sdd/templates/definition-of-done.md` § Goal-type detection, then pull the matching block per § Blocks. Apply the inline-vs-reference rule from § Inlining vs reference (Setup / Refactor get a one-line reference; UI / Integration / Test / Generic get the full inlined block). |
 | **Dependencies** | Ids of earlier sections this section actually needs (per `tasks.md`/`design.md`), whether created this run or captured as existing; `None` if independent. Always ids. |
 
@@ -72,7 +72,7 @@ Endpoint: <METHOD path>
 Request shape: <key fields>
 Response shape: <key fields>
 Error responses: <code → meaning>
-Source: <api-contract.yaml or design.md § API Integration>
+Source: <api-contract.* or design.md § API Integration>
 
 ## Definition of Done                    ← work-item only
 <DoD block from definition-of-done.md>

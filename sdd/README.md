@@ -86,7 +86,7 @@ sdd/
 ├── config.json              ← tracker + VCS selection (config.example.json for reference)
 ├── constitution/            ← project standards split into one file per concern
 ├── prds/                    ← versioned PRDs
-├── apis/                    ← Swagger / OpenAPI files (optional)
+├── apis/                    ← interface contracts, or pointers to where they live (optional)
 ├── tasks/                   ← issue-mapping files per change
 ├── trackers/                ← protocol.md + per-tracker recipes (github.md, jira.md)
 ├── templates/               ← shared templates loaded on demand by skills
@@ -151,6 +151,14 @@ Post-merge, run `/sdd-status`. Walks active changes and offers (with prompts):
 5. **Mapping.** Only after step 4 confirms success, rename `sdd/tasks/<name>.md` to `sdd/tasks/<name>.archived.md`.
 
 Under `--dry-run`, run step 1 only and print `[DRY RUN] would archive <name>` or `[DRY RUN] would skip <name>: <reason>`.
+
+### Interface contracts
+
+An interface contract is a machine-readable schema for an interface whose other side is not built or tested in this repo — another team's API, an external service, an event stream (OpenAPI, GraphQL SDL, `.proto`, AsyncAPI, JSON Schema, …). In-repo schemas the toolchain already enforces (ORM models, platform object metadata, data-model definitions) don't count.
+
+- **Where it lives.** The maintained source is `sdd/apis/` (the contract itself, or a short pointer file to where it lives) or the path/URL a PRD's `## API Contract` section references. `openspec/changes/<change>/api-contract.*` is a snapshot taken when the change was created — use it only when no maintained source is available. If the two disagree on something in scope, report contract drift rather than picking one.
+- **Precedence.** On shape — operation and field names, types, optionality, enum values, documented outcomes — the contract beats prose (`design.md`, other teams' ticket text, story text). The PRD still wins on scope.
+- **Used by** `/sdd-tasks-from-story` (design and codebase audit) and `/sdd-verify` (code-review checklist § 7).
 
 ### Dry-run
 

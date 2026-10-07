@@ -75,6 +75,6 @@
 
 ## API Contract (optional)
 
-<!-- If this feature integrates with a backend API, link the Swagger/OpenAPI file or URL. /sdd-from-prd will copy local files into the OpenSpec change folder. -->
+<!-- If this feature integrates with an API or event stream owned elsewhere, link its contract file or URL (OpenAPI, GraphQL SDL, .proto, AsyncAPI…). /sdd-from-prd will copy local files into the OpenSpec change folder. -->
 
-**Source:** `<path/to/swagger.yaml>` or `<https://api.example.com/openapi.json>`
+**Source:** `<path/to/contract>` or `<https://api.example.com/openapi.json>`
