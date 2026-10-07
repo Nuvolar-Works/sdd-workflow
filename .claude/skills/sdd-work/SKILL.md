@@ -39,7 +39,7 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 
 7. Otherwise, check for an existing PR (read-only, run directly):
    ```bash
-   gh pr view --json number,state,reviewDecision,reviews,comments,url
+   gh pr view --json number,state,reviewDecision,reviews,comments,statusCheckRollup,url
    ```
    Treat "no pull requests found" as "No PR yet". The PR check uses `gh` regardless of tracker (PRs live in GitHub).
 
@@ -48,8 +48,8 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
    | State | Mode | Behavior |
    |-------|------|----------|
    | No PR yet (with or without commits) | **Resume** | Skip Phase 2 (codebase research) and the plan-confirmation prompt. Re-state acceptance criteria status from existing commits. Continue at Phase 1 with light context. |
-   | PR open, no review feedback | **Resume** | Same as above. |
-   | PR open with `reviewDecision = CHANGES_REQUESTED` or `reviews`/`comments` needing reply | **Fix-from-PR** | Use `reviews`/`comments` from step 7; fetch inline file:line comments via `gh api repos/{owner}/{repo}/pulls/<n>/comments`. Sync them to the ticket as a Clarification comment (opt-in via Phase 3.5 prompts later). Skip Phase 2's codebase research; present a focused fix plan. |
+   | PR open, no review feedback, no failing checks | **Resume** | Same as above. |
+   | PR open with `reviewDecision = CHANGES_REQUESTED`, `reviews`/`comments` needing reply, or a failing check in `statusCheckRollup` | **Fix-from-PR** | Use `reviews`/`comments` and failing checks (name + details URL) from step 7 — CI's verdict is authoritative for every stack, whatever runs it; fetch inline file:line comments via `gh api repos/{owner}/{repo}/pulls/<n>/comments`. Sync them to the ticket as a Clarification comment (opt-in via Phase 3.5 prompts later). Skip Phase 2's codebase research; present a focused fix plan. |
    | PR merged | — | Tell the user the work is done; suggest running `/sdd-status` to archive the change. Stop. |
    | PR closed (not merged) | — | Stop and ask the user how to proceed. |
 
@@ -209,7 +209,7 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 
 30. Implement the changes following the plan. Follow existing patterns. Add or update tests if AC requires. Keep changes focused.
 
-31. Run the gate commands listed in `sdd/constitution/quality-gates.md`, in order; if absent, fall back to `npm test` / `npm run lint` / `npm run build` for the scripts that exist in `package.json`. Append `; echo "exit=$?"` to each command; exit 0 → PASS, non-zero → FAIL, undefined script → NOT CONFIGURED.
+31. Run the gate commands listed in `sdd/constitution/quality-gates.md`, in order. Append `; echo "exit=$?"` to each command; exit 0 → PASS, non-zero → FAIL, command not found → NOT CONFIGURED. A gate with no runnable command (unless marked `review-only`) is NOT CONFIGURED — never skip it silently. Gates marked `CI-only` are not run; list them as `CI-only (not run locally)`. If `quality-gates.md` is absent, run nothing and report `Project checks: NOT CONFIGURED — run /sdd-constitution`; never guess gate commands from build manifests or CI config.
 
     Fix issues these surface. If any check still fails after fix attempts, ask the user: "Checks still failing (<names>) — keep iterating, or save progress and stop? (/sdd-verify will not open a PR while a check fails.)"
 

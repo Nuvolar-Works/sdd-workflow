@@ -38,6 +38,7 @@ Fail row example: `✗ Jira auth: Atlassian Rovo MCP not authenticated. Run /sdd
 - Pass if `sdd/constitution/index.md` exists.
 - Soft-pass with note if only the legacy `docs/constitution.md` exists.
 - Fail if neither exists.
+- If `sdd/constitution/quality-gates.md` has a `CI baseline:` line, run `git diff <baseline-commit>..HEAD -- <ci-paths>`. Warn (don't fail) if it adds or changes commands CI executes: `⚠ CI config changed since the gates were set — re-run /sdd-constitution`. Version-pin bumps alone don't count.
 
 ### 4. OpenSpec CLI is installed and `openspec/` is initialised
 
