@@ -17,7 +17,7 @@ You are producing a project snapshot **and** running the post-merge completion s
 
 1. Read `sdd/config.json`. If missing, tell the user to run `/sdd-setup` and stop.
 2. Read `sdd/trackers/protocol.md` for the dry-run convention.
-3. Read `sdd/trackers/<tracker>.md` for `FetchTicket`, `SearchTickets`, `UpdateTicketStatus`, `CommentOnTicket`.
+3. Read `sdd/trackers/<tracker>.md` for `FetchTicket`, `SearchTickets`, `UpdateTicketStatus`, `CommentOnTicket`. If `vcs` differs from `tracker`, also read `sdd/trackers/<vcs>.md` (`ParsePRUrl`, `GetPR`, and the branch/PR operations for step 15b).
 
 ## Phase 1: Inventory Active Changes
 
@@ -152,6 +152,8 @@ A Jira work-item ticket already in `jira.status_workflow.done` counts toward Cla
         - If done (Jira: `jira.status_workflow.done`; GitHub: `CLOSED` and its `GetLinkedPR` state is `MERGED`): change every `- [ ]` in the section to `- [x]`.
         - Otherwise: leave as-is (in-progress and open both stay `[ ]`; the file is meant to reflect "is this section's work shipped?").
       - Write atomically (single read-modify-write). Leave changes uncommitted and list the modified files.
+
+15b. **Commit the sweep.** If Class A or C wrote files (or, under `DRY_RUN`, would have), offer (AskUserQuestion) to commit them per `sdd/README.md` § Committing planning artifacts, on branch `chore/sdd-sweep-<YYYY-MM-DD>` with commit `chore(sdd): archive completed changes`. Paths: the archived change folders (old and new location under `openspec/changes/`), any `openspec/specs/` the archive updated, the renamed mapping files, and the regenerated `tasks.md` files. When `DRY_RUN`, print the branch, paths and commit message only.
 
 16. **Execution** (when `DRY_RUN`):
     - For each candidate, print `[DRY RUN] would <op>(...)`. For Class A, run the read-only archive pre-flight (`sdd/README.md` § Archiving step 1) so blocked archives show up as `[DRY RUN] would skip <change>: <reason>`.

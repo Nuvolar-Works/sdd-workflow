@@ -77,11 +77,15 @@ You are creating tracker tickets from an OpenSpec change's artifacts. The active
 
 10. The protocol handles both real and dry-run paths via the convention in `sdd/trackers/protocol.md`. Don't duplicate the algorithm in this skill.
 
+## Phase 2: Planning PR
+
+11. Offer (AskUserQuestion) to commit the planning artifacts in their own PR per `sdd/README.md` § Committing planning artifacts, with `<change>` = `$ARGUMENTS`. Paths: the mapping file `sdd/tasks/$ARGUMENTS.md` and `openspec/changes/$ARGUMENTS/` (the `tasks.md` annotations, plus any change files not yet committed). VCS operations come from `sdd/trackers/<vcs>.md` (`vcs` in `sdd/config.json`). When `DRY_RUN`, print the branch, paths and commit message only.
+
 ## Rules
 
 - One ticket per section, not per subtask.
 - Create in section order so dependency ids resolve correctly.
-- Use abstract operation names from `sdd/trackers/protocol.md`; never embed `gh` or MCP calls inline.
+- Use abstract operation names from `sdd/trackers/protocol.md`; never embed `gh`, `curl` or MCP calls inline.
 - If any creation fails mid-batch, stop and report. Capture which sections succeeded so the user can re-run with **Continue** to finish the rest.
 - If the change has no `tasks.md` or it's empty, tell the user and stop.
 - Respect the OpenSpec format — never modify `proposal.md`, `specs/`, or `design.md` from this skill (only `tasks.md` for the section-header annotations).

@@ -212,6 +212,10 @@ This requires Jira mode (`tracker: "jira"` in `sdd/config.json`): each goal is a
 
     Then the existing `Next: /sdd-work <first-key>` line from the protocol's summary already covers the hand-off.
 
+## Phase 6: Planning PR
+
+22. Offer (AskUserQuestion) to commit the planning artifacts in their own PR per `sdd/README.md` § Committing planning artifacts, with `<change>` = `$CHANGE_NAME` and the commit `docs(sdd): plan $CHANGE_NAME [$ARGUMENTS]`. Paths: `openspec/changes/$CHANGE_NAME/` and `sdd/tasks/$CHANGE_NAME.md`. VCS operations come from `sdd/trackers/<vcs>.md` (`vcs` in `sdd/config.json`). When `DRY_RUN`, print the branch, paths and commit message only.
+
 ## Rules
 
 - **Spec at story level, Tasks at goal level.** One OpenSpec change per story; one Jira Task per `## N.` section in `tasks.md`.

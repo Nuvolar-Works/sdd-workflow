@@ -102,7 +102,7 @@ Run `/sdd-doctor` any time to verify your environment: checks that `sdd/config.j
 
 ## Workflow Overview
 
-There are four entry points depending on context:
+There are four entry points depending on context. Each planning skill ends by offering to commit its artifacts (OpenSpec change, mapping file, new PRD) in their own `docs(sdd)` planning PR; merge it before starting work items.
 
 ### Path A: PO hands off a PRD (single feature)
 
