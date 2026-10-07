@@ -122,6 +122,7 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
     - `sdd/constitution/principles.md`
     - `sdd/constitution/folder-structure.md`
     - `sdd/constitution/quality-gates.md`
+    - `sdd/constitution/design-system.md` / `sdd/constitution/utilities.md` — only if the file exists and the implementation plan (Phase 2) touches a path matching one of its `Load when` globs in `sdd/constitution/index.md`; load it once the plan exists, before implementing. If the table has no `Load when` column, load it when the planned paths plausibly fall in the area its Purpose describes.
 
     Legacy fallback: `docs/constitution.md` if `sdd/constitution/index.md` is absent. Skip if neither exists.
 

@@ -91,8 +91,8 @@ If `git status --porcelain` is non-empty, list the files and ask the user to eit
 16. Read these constitution section files (lazy load — only what review needs):
     - `sdd/constitution/principles.md` (always)
     - `sdd/constitution/quality-gates.md` (always)
-    - `sdd/constitution/design-system.md` — only if changed files include UI components or route files (if the file exists)
-    - `sdd/constitution/utilities.md` — only if changed files touch the API client or shared data-shape utilities (if the file exists)
+    - `sdd/constitution/review-checklist.md` (if the file exists)
+    - `sdd/constitution/design-system.md` / `sdd/constitution/utilities.md` — only if the file exists and a changed path (from `git diff $MB HEAD --name-only`) matches one of its `Load when` globs in `sdd/constitution/index.md`. If the table has no `Load when` column, load it when the changed paths plausibly fall in the area its Purpose describes.
 
     Legacy fallback: read `docs/constitution.md` if `sdd/constitution/index.md` is absent.
 
@@ -100,7 +100,7 @@ If `git status --porcelain` is non-empty, list the files and ask the user to eit
 
     If `quality-gates.md` has a `CI baseline` line, run `git diff <baseline-commit>..HEAD -- <ci-paths>`. If the diff adds or changes commands CI executes (not just version pins), warn: `CI config changed since the gates were set — re-run /sdd-constitution`.
 
-18. Read `sdd/templates/code-review-checklist.md` and run through each section in order against the changed files. For each category, mark CLEAN or list specific findings with file:line references. The Design Alignment check (checklist § 5) uses the spec + design excerpts captured in Phase 1.5; if `CHANGE_NAME` was `none`, that row is `N/A`.
+18. Read `sdd/templates/code-review-checklist.md` and run through each section in order against the changed files. For each category, mark CLEAN or list specific findings with file:line references. The Design Alignment check (checklist § 5) uses the spec + design excerpts captured in Phase 1.5; if `CHANGE_NAME` was `none`, that row is `N/A`. `review-checklist.md` heuristics are applied via checklist § 6.
 
 19. Report verification results in this shape:
 

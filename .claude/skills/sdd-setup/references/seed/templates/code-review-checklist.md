@@ -4,43 +4,42 @@ Used by `/sdd-verify` for the code-review step. Each section produces either CLE
 
 ## 1. Pattern consistency
 
-- Do the changes follow existing codebase patterns (naming, file layout, component shape, state management)?
-- Are imports organized like neighbouring files?
-- Are exports (named vs default) consistent with the surrounding module style?
+- Do the changes follow existing codebase patterns (naming, file layout, module shape, layering)?
+- Are imports / dependencies organized like neighbouring files?
+- Is the public surface (exports, visibility, access modifiers) consistent with the surrounding module style?
 - Flag any deviation with a one-line explanation of the prevailing pattern.
 
 ## 2. Security
 
-- XSS vectors: `dangerouslySetInnerHTML`, unescaped user input rendered as HTML, third-party SVG inserted into the DOM without sanitisation.
-- Secret exposure: API keys / tokens hardcoded, logged, or shipped to the client when they should be server-only.
-- Injection risks: dynamic query construction, shell commands assembled from inputs, unparameterised database calls.
-- AuthZ checks: routes / actions that should be gated by RBAC but aren't, missing `requireRole` style guards.
+- Untrusted input reaching an interpreter or renderer without escaping, parameterisation or sanitisation (HTML/DOM, SQL/SOQL, shell, templates).
+- Secrets hard-coded, logged, or shipped to clients when they should stay server-side.
+- Authorisation checks missing where the surrounding code applies them (route guards, `with sharing` / FLS, policy checks).
 
 ## 3. Performance
 
-- Unnecessary re-renders (`useMemo` / `useCallback` missing on expensive children's props).
-- N+1 fetches in lists.
-- Large bundles imported when a lighter alternative exists (e.g. moment vs date-fns).
-- Unbounded loops, recursive calls, or deep object diffs in render paths.
+- Work repeated per item inside loops: queries, DML or API calls per record (N+1).
+- Unbounded loops or recursion.
+- Avoidable re-computation on hot paths (e.g. re-renders, repeated parsing).
+- Heavy dependencies imported where a lighter one exists.
+- Resource or limit exhaustion (governor limits, memory, connection pools).
 
 ## 4. Error handling
 
-- System boundaries (API calls, user input, file I/O, external data) are wrapped in error handling appropriate to the layer.
-- UI surfaces have explicit error states (not just "loading then nothing").
-- Server actions return error shapes the client can map to user feedback.
+- System boundaries (external calls, user input, file I/O, external data) are wrapped in error handling appropriate to the layer.
+- Failure states are visible to the caller, not swallowed (UI error states, error responses, retries / dead-letter, transaction rollback).
 
 ## 5. Design alignment (only if a linked OpenSpec change exists)
 
 - Read the relevant section of `openspec/changes/<change>/design.md`.
-- Do the changes match the architecture described? Components, file placements, integration points?
+- Do the changes match the architecture described? Modules/components, file placements, integration points?
 - Flag deviations as either justified (explain why) or unjustified (recommend reverting to design).
 
 ## 6. Constitution compliance (only if `sdd/constitution/index.md` exists)
 
 - Read `sdd/constitution/principles.md`. For each NON-NEGOTIABLE principle, check the changed code. Violations are reported as **blocker recommendations** (still the user's call but flagged loudly).
 - For each RECOMMENDED principle, check the changed code. Deviations are reported as advisory.
-- Only if changed files include UI components or route files, also load `sdd/constitution/design-system.md` (if the file exists) and check colour tokens, font, shadow scale, border radius, dark-mode support.
-- Only if changed files touch the API client or shared data-shape utilities, also load `sdd/constitution/utilities.md` (if the file exists; e.g. query param serialization rules).
+- If `sdd/constitution/review-checklist.md` exists, apply its stack-specific heuristics under the matching category above (§§ 1-4) and report findings there.
+- Load `sdd/constitution/design-system.md` and `sdd/constitution/utilities.md` (if they exist) only when a changed path matches one of the file's `Load when` globs in `sdd/constitution/index.md`; check the changes against the rules it defines. If the table has no `Load when` column, load the file when the changed paths plausibly fall in the area its Purpose describes.
 
 ## 7. Contract fidelity (only if an interface contract resolves per `sdd/README.md` § Interface contracts and the diff produces or consumes that interface or its test doubles)
 
