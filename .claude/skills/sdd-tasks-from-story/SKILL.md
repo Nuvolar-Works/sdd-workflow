@@ -1,6 +1,6 @@
 ---
 name: sdd-tasks-from-story
-description: Generate an OpenSpec change for a Jira user story, then create one board-visible Jira Task per significant goal, each linked back to the story. Each Task references the spec section it implements. Requires Jira mode (Jira tickets, code/PRs on GitHub).
+description: Generate an OpenSpec change for a Jira user story, then create one board-visible Jira Task per significant goal, each linked back to the story. Each Task references the spec section it implements. Requires Jira mode (Jira tickets, code/PRs on GitHub or Bitbucket).
 argument-hint: "<jira-story-key> [--dry-run]"
 disable-model-invocation: true
 ---
@@ -13,7 +13,7 @@ You are turning a PO-written Jira user story (e.g. `TT-456`) into:
 
 > **Why linked Tasks, not Sub-tasks?** Jira Sub-tasks don't appear on the board — they're buried inside their parent, so the team loses visibility of the goal-level work. Story and Task sit at the same hierarchy level, so the association is an issue link rather than a `parent`. The `CreateChildTickets` recipe in `sdd/trackers/jira.md` handles both the create and the link.
 
-This requires Jira mode (`tracker: "jira"` in `sdd/config.json`): each goal is a Jira Task linked to the story; later `/sdd-work` creates GitHub branches and PRs that link back via the Jira key.
+This requires Jira mode (`tracker: "jira"` in `sdd/config.json`): each goal is a Jira Task linked to the story; later `/sdd-work` creates branches and PRs that link back via the Jira key.
 
 ## Input
 
@@ -211,6 +211,10 @@ This requires Jira mode (`tracker: "jira"` in `sdd/config.json`): each goal is a
     ```
 
     Then the existing `Next: /sdd-work <first-key>` line from the protocol's summary already covers the hand-off.
+
+## Phase 6: Planning PR
+
+22. Offer (AskUserQuestion) to commit the planning artifacts in their own PR per `sdd/README.md` § Committing planning artifacts, with `<change>` = `$CHANGE_NAME` and the commit `docs(sdd): plan $CHANGE_NAME [$ARGUMENTS]`. Paths: `openspec/changes/$CHANGE_NAME/` and `sdd/tasks/$CHANGE_NAME.md`. VCS operations come from `sdd/trackers/<vcs>.md` (`vcs` in `sdd/config.json`). When `DRY_RUN`, print the branch, paths and commit message only.
 
 ## Rules
 

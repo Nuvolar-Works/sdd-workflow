@@ -18,16 +18,17 @@ Walk through these checks and build a `state` summary. Don't act yet.
 |-------|----------------|--------|
 | sdd folder | `sdd/` | dir exists? |
 | sdd config | `sdd/config.json` | file exists? |
-| sdd config — tracker | `sdd/config.json` `.tracker` | value present? |
+| sdd config — tracker / vcs | `sdd/config.json` `.tracker`, `.vcs` | values present? |
 | Constitution (split) | `sdd/constitution/index.md` | file exists? |
 | Constitution (legacy) | `docs/constitution.md` | file exists? |
 | PRD template | `sdd/prd-template.md` | file exists? |
-| Tracker recipes + shared templates | every `.claude/skills/sdd-setup/references/seed/{trackers,templates}/*.md` has a counterpart under `sdd/` | files exist? |
+| Tracker recipes + shared templates | every `.claude/skills/sdd-setup/references/seed/{trackers,templates}/*.md` (and `trackers/*.sh` helpers) has a counterpart under `sdd/` | files exist? |
 | OpenSpec | `openspec/specs/` | dir exists? |
-| GitHub auth | `gh auth status` | exit code 0? |
+| GitHub auth (tracker or vcs is `github`) | `gh auth status` | exit code 0? |
+| Bitbucket auth (vcs is `bitbucket`) | `VerifyVcsAuth()` from `sdd/trackers/bitbucket.md` | succeeds? |
 | Atlassian Rovo MCP | a quick test call | authed? |
 | `.mcp.json` | `.mcp.json` | file exists? |
-| Git remote | `git remote -v` | has any remote? |
+| Git remote | `git remote -v` | has any remote? host (`github.com` / `bitbucket.org`)? |
 
 Present the findings in a checklist (✓ configured, ✗ missing, ? unknown).
 
@@ -52,10 +53,11 @@ cp -n "$SEED/config.example.json" sdd/config.example.json
 cp -n "$SEED/prd-template.md" sdd/prd-template.md
 cp -n "$SEED/prd-template-mini.md" sdd/prd-template-mini.md
 cp -n "$SEED/trackers/"*.md sdd/trackers/
+cp -n -p "$SEED/trackers/"*.sh sdd/trackers/
 cp -n "$SEED/templates/"*.md sdd/templates/
 ```
 
-`cp -n` skips overwrite — only fills in genuinely missing files.
+`cp -n` skips overwrite — only fills in genuinely missing files (`-p` keeps the helper scripts executable).
 
 ### 2.2 Initial config.json
 
@@ -71,14 +73,14 @@ openspec init --tools none
 
 `--tools none` creates `openspec/{specs,changes}` without regenerating the SDD-customised `.claude/skills/openspec-*` skills.
 
-If `openspec` is not on the PATH, tell the user to install it (`npm install -g @fission-ai/openspec@latest`) and skip this step. The rest of setup still works; OpenSpec can be initialised later.
+If `openspec` is not on the PATH, tell the user to install it (`npm install -g @fission-ai/openspec@latest` — Node/npm is needed only for the OpenSpec CLI, not for the project's stack) and skip this step. The rest of setup still works; OpenSpec can be initialised later.
 
 ### 2.4 Tracker Selection
 
 Use AskUserQuestion to ask which tracker:
 
 - **GitHub** — tickets and code in GitHub. Default for most projects.
-- **Jira** — tickets in Jira, code and PRs in GitHub. Use when product management is in Jira.
+- **Jira** — tickets in Jira, code and PRs in GitHub or Bitbucket Cloud. Use when product management is in Jira.
 
 #### GitHub branch
 
@@ -88,24 +90,26 @@ Use AskUserQuestion to ask which tracker:
    ```
    If this fails, tell the user to run `gh auth login` and pause this phase until they confirm.
 
-2. Determine the default base branch. Ask:
+2. Determine the base branch. Ask:
    - "What base branch should feature PRs target? (`develop` recommended; some projects use `main`)"
-   - Default: check `git branch -a` for `develop` first, then `main`. Pre-fill the answer.
+   - Default: an existing `base_branch` (or legacy `github.default_base_branch`, which this replaces), else check `git branch -a` for `develop` first, then `main`. Pre-fill the answer.
 
 3. Write `sdd/config.json`:
    ```json
    {
      "tracker": "github",
      "vcs": "github",
-     "github": {
-       "default_base_branch": "<answer>"
-     }
+     "base_branch": "<answer>"
    }
    ```
 
 #### Jira branch
 
-1. Verify `gh auth status` (PRs always go through GitHub); if it fails, tell the user to run `gh auth login`. Then, if the Atlassian Rovo MCP is unauthenticated, trigger its `authenticate` tool (or `complete_authentication` if a flow is already in progress).
+1. Determine the git host from `git remote get-url origin`: `github.com` → `vcs: github`, `bitbucket.org` → `vcs: bitbucket`. Anything else (or no remote): tell the user only GitHub and Bitbucket Cloud are supported and ask which applies. Then verify host auth:
+   - **github**: `gh auth status`; if it fails, tell the user to run `gh auth login`.
+   - **bitbucket**: `VerifyVcsAuth()` from `sdd/trackers/bitbucket.md`. If the env vars are missing or rejected, explain: create an Atlassian API token (Atlassian account → Security → API tokens) with scopes `read:repository:bitbucket`, `read:pullrequest:bitbucket`, `write:pullrequest:bitbucket`, then add `export BITBUCKET_EMAIL=<atlassian-email>` and `export BITBUCKET_API_TOKEN=<token>` to the shell profile (or `BITBUCKET_ACCESS_TOKEN` for a workspace/project/repository access token) and restart the session. Pause until they confirm. Never write tokens to `sdd/config.json`. If `origin` does not parse as `bitbucket.org/<workspace>/<repo_slug>` (or there is no remote yet), ask for the workspace and repo slug now and run this check right after step 6 writes them to the config.
+
+   Then, if the Atlassian Rovo MCP is unauthenticated, trigger its `authenticate` tool (or `complete_authentication` if a flow is already in progress).
 
 2. Once auth completes, list accessible Jira sites (`getAccessibleAtlassianResources`) and projects (`getVisibleJiraProjects`). Present them to the user. Ask them to confirm which site (e.g. `your-org.atlassian.net`) and which project key (e.g. `TT`).
 
@@ -117,15 +121,16 @@ Use AskUserQuestion to ask which tracker:
    - `child_issue_type`: list the project's issue types (`getJiraProjectIssueTypesMetadata`) and pick a non-subtask, hierarchy-level-0 type — `Task` if present. Confirm with the user.
    - `child_link_type`: list available link types (`getIssueLinkTypes`) and prefer a decomposition-style link in this order: `Work item split` (`split to`/`split from`) → `Relates`. Confirm with the user, defaulting to the first match found.
 
-6. Write `sdd/config.json` with the Jira section (including `child_issue_type` and `child_link_type`), plus `vcs: "github"` and the GitHub `default_base_branch` answer (still ask for it — even Jira-tracker projects use GitHub for code).
+6. Ask for the base branch as in the GitHub branch (step 2), then write `sdd/config.json` with the Jira section (including `child_issue_type` and `child_link_type`), plus `vcs` (step 1) and top-level `base_branch`. For `vcs: "bitbucket"`, also write `bitbucket.workspace` / `repo_slug` — `null` when the `origin` remote parses as `bitbucket.org/<workspace>/<repo_slug>`, otherwise ask the user for them.
 
 ### 2.5 MCP Wiring
 
 For each MCP, ask the user (multi-select via AskUserQuestion):
 
 - **Atlassian Rovo MCP** — required if tracker is Jira. Pre-select.
-- **Playwright MCP** — optional. Useful for `/sdd-verify` to do live UI verification on frontend projects.
-- **Context7 MCP** — optional. Useful for fetching framework docs during implementation.
+- **Playwright MCP** — optional; recommend for projects with a UI layer (live UI verification in `/sdd-verify`).
+- **Context7 MCP** — optional; useful for any stack (library/framework docs during implementation).
+- **Salesforce DX MCP** — optional; recommend when `sfdx-project.json` exists.
 
 For each selected MCP, append the MCP server entry to `.mcp.json` (creating the file if it doesn't exist). Use the official server config for each MCP. Then update `sdd/config.json` `mcps_enabled` accordingly.
 
@@ -151,6 +156,7 @@ Print a concise summary table:
 | sdd/ folder | ✓ created (or ✓ already present) |
 | sdd/config.json | ✓ written |
 | Tracker | ✓ <tracker> ([details]) |
+| Git host | ✓ <vcs> (base branch <base_branch>) |
 | MCPs | ✓ <list> |
 | OpenSpec | ✓ initialised (or ⚠ pending — install openspec) |
 | Constitution | ✓ present (or ⚠ pending — run /sdd-constitution) |
@@ -163,8 +169,8 @@ Next steps:
 ## Rules
 
 - This skill is idempotent. Re-running must NOT clobber existing answers — read current `sdd/config.json` and only ask about fields that are missing or that the user explicitly wants to change.
-- Never write secrets (API tokens, passwords) into `sdd/config.json`. The Atlassian MCP handles its own credentials.
+- Never write secrets (API tokens, passwords) into `sdd/config.json`. The Atlassian MCP handles its own credentials; Bitbucket credentials live in environment variables only.
 - Never overwrite a non-empty `sdd/config.json` without confirming.
 - Never install MCPs the user did not select.
-- For brand-new projects with no git remote: ask the user to add one first if the chosen tracker is GitHub. Jira-tracker projects can proceed without a remote (PRs come later).
+- For brand-new projects with no git remote: ask the user to add one first if the chosen tracker is GitHub. Jira-tracker projects can proceed without a remote (PRs come later) once the user names the git host.
 - If the user aborts mid-setup, leave the partial state in place — they can re-run to continue.

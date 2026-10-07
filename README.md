@@ -4,16 +4,17 @@ Spec-Driven Development workflow for any stack, powered by [Claude Code](https:/
 
 Automates the full pipeline: **PRD &rarr; specifications &rarr; tickets (GitHub or Jira) &rarr; AI-driven development &rarr; verified PRs**.
 
-Supports two tracker modes: **GitHub** (GitHub Issues + GitHub for code/PRs) and **Jira** (Jira tickets + GitHub for code/PRs). Configured once via `sdd/config.json`.
+Supports three modes: **GitHub** (GitHub Issues + GitHub for code/PRs), **Jira** (Jira tickets + GitHub for code/PRs) and **Jira + Bitbucket** (Jira tickets + Bitbucket Cloud for code/PRs). Configured once via `sdd/config.json`.
 
 ## Prerequisites
 
 | Tool | Install | Purpose |
 |------|---------|---------|
 | [Claude Code](https://claude.ai/claude-code) | `npm install -g @anthropic-ai/claude-code` | AI coding agent with skills and hooks |
-| [GitHub CLI](https://cli.github.com/) | `brew install gh` then `gh auth login` | Issue creation, PR management (GitHub mode) |
+| [GitHub CLI](https://cli.github.com/) | `brew install gh` then `gh auth login` | Issue creation, PR management (only when the tracker or git host is GitHub) |
 | [OpenSpec](https://github.com/Fission-AI/OpenSpec) | `npm install -g @fission-ai/openspec@latest` | Specification generation and management |
-| [jq](https://jqlang.github.io/jq/) | `brew install jq` | Used by the conventional-commit hook |
+| [jq](https://jqlang.github.io/jq/) | `brew install jq` | Used by the conventional-commit hook (and the Bitbucket helper) |
+| Bitbucket Cloud access (Jira + Bitbucket mode) | `curl` + `jq`, plus an Atlassian API token with scopes `read:repository:bitbucket`, `read:pullrequest:bitbucket`, `write:pullrequest:bitbucket`, exported as `BITBUCKET_EMAIL` / `BITBUCKET_API_TOKEN` | PR management via `sdd/trackers/bitbucket.sh` (tokens never go in `sdd/config.json`) |
 | Jira MCP (optional) | Configure via `/sdd-setup` | Jira story and linked-task management (Jira mode) |
 
 Node/npm is needed only to install the Claude Code and OpenSpec CLIs, not for your project's own stack.
@@ -75,8 +76,8 @@ You don't need to copy `sdd/` — `/sdd-setup` seeds it from its own bundle.
 Run `/sdd-setup` once to initialise the `sdd/` directory, run `openspec init`, configure your tracker (GitHub or Jira), and wire up any required MCPs. It is idempotent — safe to re-run.
 
 The setup wizard will:
-1. **Detect** whether GitHub CLI and/or a Jira MCP are available
-2. **Ask** which tracker mode to use (GitHub / Jira)
+1. **Detect** whether GitHub CLI and/or a Jira MCP are available, and the git host (GitHub or Bitbucket Cloud) from the `origin` remote
+2. **Ask** which tracker mode to use (GitHub / Jira; Jira + Bitbucket when the remote is on bitbucket.org)
 3. **Write** `sdd/config.json` with your tracker settings (tracker, vcs, base branch, Jira project key, status workflow, linked-task types)
 4. **Copy** seed files into `sdd/` (templates, tracker adapters, PRD templates)
 
@@ -101,7 +102,7 @@ Run `/sdd-doctor` any time to verify your environment: checks that `sdd/config.j
 
 ## Workflow Overview
 
-There are four entry points depending on context:
+There are four entry points depending on context. Each planning skill ends by offering to commit its artifacts (OpenSpec change, mapping file, new PRD) in their own `docs(sdd)` planning PR; merge it before starting work items.
 
 ### Path A: PO hands off a PRD (single feature)
 
@@ -227,7 +228,7 @@ Checklist: `sdd/templates/code-review-checklist.md`
 
 `sdd/config.json` (created by `/sdd-setup`, committed; contains no secrets) controls which tracker is active. See `sdd/config.example.json` for the full shape.
 
-Tracker adapters: `sdd/trackers/protocol.md`, `sdd/trackers/github.md`, `sdd/trackers/jira.md`.
+Tracker adapters: `sdd/trackers/protocol.md`, `sdd/trackers/github.md`, `sdd/trackers/jira.md`, `sdd/trackers/bitbucket.md` (+ `bitbucket.sh`).
 
 ## Detailed Usage
 
@@ -364,7 +365,7 @@ sdd-workflow/
 |   |-- apis/                              # Interface contracts or pointers to them (optional)
 |   |   +-- .gitkeep
 |   |-- templates/                         # Workflow templates (design-challenge, code-review, etc.)
-|   +-- trackers/                          # Tracker protocol + GitHub and Jira adapters
+|   +-- trackers/                          # Tracker protocol + GitHub, Jira and Bitbucket (bitbucket.md/.sh) adapters
 |
 |-- openspec/
 |   |-- specs/                             # Living domain specs (grows over time)
@@ -440,6 +441,7 @@ Edit `.claude/hooks/validate-commit-msg.sh` to change the allowed commit types o
 | Problem | Solution |
 |---------|----------|
 | `gh: command not found` | Install GitHub CLI: `brew install gh` then `gh auth login` |
+| Bitbucket call exits with code 2 or HTTP 401/403 | Exit 2: the `origin` remote or the auth env vars are missing. 401/403: the token is invalid or lacks scopes. Create an Atlassian API token with the Bitbucket scopes above, export `BITBUCKET_EMAIL` / `BITBUCKET_API_TOKEN` in your shell profile, restart the session. |
 | `openspec: command not found` | Install OpenSpec: `npm install -g @fission-ai/openspec@latest` |
 | Skills don't appear as slash commands | Restart Claude Code. Skills are discovered on startup. |
 | Commit blocked by hook | Your commit message doesn't follow conventional commits. Use `type(scope): description` format. |

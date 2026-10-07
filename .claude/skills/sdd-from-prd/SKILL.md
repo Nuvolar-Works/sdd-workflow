@@ -142,6 +142,10 @@ PRD file expected at: `sdd/prds/<feature-slug>.md` (legacy fallback: `docs/prds/
     Next: Run /sdd-work <ticket-id> to start developing a ticket.
     ```
 
+## Phase 4: Planning PR
+
+25. Offer (AskUserQuestion) to commit the planning artifacts in their own PR per `sdd/README.md` § Committing planning artifacts, with `<change>` = `<feature-slug>`. Paths: `openspec/changes/<feature-slug>/`, `sdd/tasks/<feature-slug>.md` (if tickets were created), and `sdd/prds/<feature-slug>.md` when it is untracked. VCS operations come from `sdd/trackers/<vcs>.md`. When `DRY_RUN`, print the branch, paths and commit message only.
+
 ## Rules
 
 - The PRD is the source of truth for WHAT to build. Don't invent requirements outside it.

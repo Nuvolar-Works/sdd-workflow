@@ -1,6 +1,6 @@
 # PR Body Template
 
-Used by `/sdd-verify` when creating pull requests. Substitute the placeholders before passing to `gh pr create --body`.
+Used by `/sdd-verify` when creating pull requests. Substitute the placeholders before passing the body to `CreatePR`.
 
 ```markdown
 ## Summary
@@ -21,7 +21,7 @@ Used by `/sdd-verify` when creating pull requests. Substitute the placeholders b
 <TICKET_CLOSE_LINE>
 ```
 
-`TICKET_CLOSE_LINE` is one of:
+`TICKET_CLOSE_LINE` depends on the tracker (not the git host):
 - GitHub: `Closes #<issue-number>`
 - Jira: `Resolves <JIRA-KEY>` (also call `LinkTicketToPR` to comment on the Jira ticket)
 

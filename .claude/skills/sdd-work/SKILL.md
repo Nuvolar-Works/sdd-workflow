@@ -30,28 +30,24 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 5. Inspect the current branch:
    ```bash
    git branch --show-current
-   git log <base>..HEAD --oneline    # base from sdd/config.json (default: develop)
+   git log <base>..HEAD --oneline    # base per the Base branch rule in sdd/trackers/protocol.md
    ```
 
-6. If on the base branch (`develop` or `main`) → **Fresh** mode. Continue at Phase 1.
+6. If on the base branch (or `main`) → **Fresh** mode. Continue at Phase 1.
 
    If not on the base branch, extract the ticket id from the branch name (same rule as `/sdd-verify` step 5). If it differs from `$ARGUMENTS`, stop and ask: switch to the base branch (Fresh) or abort.
 
-7. Otherwise, check for an existing PR (read-only, run directly):
-   ```bash
-   gh pr view --json number,state,reviewDecision,reviews,comments,statusCheckRollup,url
-   ```
-   Treat "no pull requests found" as "No PR yet". The PR check uses `gh` regardless of tracker (PRs live in GitHub).
+7. Otherwise, check for an existing PR with `GetCurrentPR(detail = true)` from the active VCS recipe (read-only). `null` means "No PR yet".
 
 8. **Mode selection**:
 
    | State | Mode | Behavior |
    |-------|------|----------|
    | No PR yet (with or without commits) | **Resume** | Skip Phase 2 (codebase research) and the plan-confirmation prompt. Re-state acceptance criteria status from existing commits. Continue at Phase 1 with light context. |
-   | PR open, no review feedback, no failing checks | **Resume** | Same as above. |
-   | PR open with `reviewDecision = CHANGES_REQUESTED`, `reviews`/`comments` needing reply, or a failing check in `statusCheckRollup` | **Fix-from-PR** | Use `reviews`/`comments` and failing checks (name + details URL) from step 7 — CI's verdict is authoritative for every stack, whatever runs it; fetch inline file:line comments via `gh api repos/{owner}/{repo}/pulls/<n>/comments`. Sync them to the ticket as a Clarification comment (opt-in via Phase 3.5 prompts later). Skip Phase 2's codebase research; present a focused fix plan. |
-   | PR merged | — | Tell the user the work is done; suggest running `/sdd-status` to archive the change. Stop. |
-   | PR closed (not merged) | — | Stop and ask the user how to proceed. |
+   | PR `OPEN`, no review feedback, no failing checks | **Resume** | Same as above. |
+   | PR `OPEN` with `review_decision = CHANGES_REQUESTED`, `reviews`/`comments`/`inline_comments` needing reply, or any check with `state = FAILURE` | **Fix-from-PR** | Use `reviews`, `comments`, `inline_comments` (file:line) and failing checks (name + `url`, carried into the fix plan) from step 7 — CI's verdict is authoritative for every stack, whatever runs it. Sync them to the ticket as a Clarification comment (opt-in via Phase 3.5 prompts later). Skip Phase 2's codebase research; present a focused fix plan. |
+   | PR `MERGED` | — | Tell the user the work is done; suggest running `/sdd-status` to archive the change. Stop. |
+   | PR `CLOSED` (not merged) | — | Stop and ask the user how to proceed. |
 
    Announce the detected mode:
    ```
@@ -178,7 +174,7 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 
     When `DRY_RUN`: print `[DRY RUN] would continue work on <current-branch> per the suggested next step`, then stop the skill.
 
-28. **Fix-from-PR mode**: build a fix plan from the PR review threads. For each thread:
+28. **Fix-from-PR mode**: build a fix plan from the PR review threads and failing checks. For each thread:
     - The reviewer's concern (verbatim).
     - The change required.
     - The file:line if specified.
@@ -192,6 +188,9 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
     1. <reviewer> on <file>:<line> — <concern>
        Proposed fix: <description>
     2. ...
+
+    Failing checks to fix:
+    - <check name> — <url>
 
     Other commits planned: <if any extra fixes Claude noticed>
     ```
@@ -274,7 +273,7 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
 - Granular commits, conventional format, ticket reference in every commit message.
 - Do NOT push the branch — that's `/sdd-verify`'s job.
 - Do not add features beyond what the ticket asks for.
-- Use abstract operation names from `sdd/trackers/protocol.md`; never embed `gh` or MCP calls inline. Exception: read-only lookups of the current branch's PR (`gh pr view`, and its inline review comments via `gh api`) in Phase 0.5.
+- Use abstract operation names from `sdd/trackers/protocol.md`; never embed `gh`, `curl` or MCP calls inline (plain `git` is fine).
 - Read constitution and OpenSpec artifacts **lazily** — load only sections relevant to this specific ticket.
 - The skill **never** updates `openspec/changes/<change>/tasks.md` checkbox state. `/sdd-verify` checks off the current ticket's section (so it ships in the feature PR); `/sdd-status` Class C reconciles any drift.
 - `--dry-run` halts the skill after Phase 2 (the plan). Code edits, branch creation, and commits don't happen in dry-run mode. Tracker writes are mocked.

@@ -190,7 +190,7 @@ git fetch origin <base>
 git checkout -b <name> origin/<base>
 ```
 
-Default `base` from `sdd/config.json` → `github.default_base_branch` (typically `develop`).
+Default `base` is the base branch (`sdd/trackers/protocol.md` § Active tracker selection).
 
 ## PushBranch(name)
 
@@ -200,13 +200,7 @@ git push -u origin <name>
 
 ## CreatePR(payload)
 
-Before creating, check whether the current branch already has a PR (read-only, may be run inline):
-
-```bash
-gh pr view --json number,url,state
-```
-
-If it is `OPEN`, skip `CreatePR` and `LinkTicketToPR` and reuse that PR. If it is `MERGED` or `CLOSED`, stop and tell the user.
+Callers check `GetCurrentPR()` first: if it is `OPEN`, skip `CreatePR` and `LinkTicketToPR` and reuse that PR; if it is `MERGED` or `CLOSED`, stop and tell the user.
 
 ```bash
 gh pr create \
@@ -233,6 +227,39 @@ PR_EOF
 
 Capture the PR URL from output. Extract the PR number from the URL tail.
 
+## VerifyVcsAuth()
+
+Same as `VerifyAuth`: `gh auth status` plus `gh repo view`.
+
+## GetCurrentPR(detail?)
+
+```bash
+gh pr view --json number,url,state
+```
+
+"no pull requests found" → `null`. `state` is already `OPEN` / `MERGED` / `CLOSED`.
+
+With `detail = true`:
+
+```bash
+gh pr view --json number,url,state,reviewDecision,reviews,comments,statusCheckRollup
+gh api repos/{owner}/{repo}/pulls/<number>/comments     # inline comments
+```
+
+- `review_decision` ← `reviewDecision` (`CHANGES_REQUESTED`, `APPROVED`; empty or `REVIEW_REQUIRED` → `NONE`).
+- `reviews[]` ← `{ author.login, state, body }`; `comments[]` ← `{ author.login, createdAt, body }`; `inline_comments[]` ← `{ user.login, path, line, body }`.
+- `checks[]` ← each `statusCheckRollup` entry: check runs use `name`, `detailsUrl` and `conclusion` (`SUCCESS`/`NEUTRAL`/`SKIPPED` → `SUCCESS`; any other conclusion → `FAILURE`; `status` not `COMPLETED` → `PENDING`); status contexts use `context`, `targetUrl` and `state` (`SUCCESS` → `SUCCESS`; `FAILURE`/`ERROR` → `FAILURE`; `PENDING`/`EXPECTED` → `PENDING`).
+
+## GetPR(number)
+
+```bash
+gh pr view <number> --json number,url,state,mergedAt
+```
+
+## ParsePRUrl(text)
+
+First match of `https?://github\.com/[^/]+/[^/]+/pull/(\d+)`.
+
 ## LinkTicketToPR(ticket, pr)
 
 Call `CloseTicket(ticket, "Resolved in PR #<pr>.")` immediately after PR creation. The PR targets `develop`, not the default branch, so `Closes #<ticket>` does not auto-close the issue.
@@ -257,10 +284,6 @@ Two-tier lookup:
    ```
    `closedByPullRequestsReferences` is only populated for PRs into the default branch, so it is usually empty for PRs that target `develop`.
 
-For each candidate PR number, check merge state:
-
-```bash
-gh pr view <pr-number> --json state,mergedAt -q '{state, mergedAt}'
-```
+For each candidate PR number, check merge state with `GetPR(<pr-number>)`.
 
 Return `{ pr_number, state, merged_at }`. State is one of `MERGED`, `CLOSED` (not merged), `OPEN`. If both tiers yield nothing, return `null` — the caller treats that as "closed without merged PR — needs manual review."

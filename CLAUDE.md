@@ -16,6 +16,8 @@ The full decision tree (greenfield vs increment vs Jira story vs trivial) lives 
 - **Single Jira user story** → `/sdd-tasks-from-story <JIRA-KEY>`. No PRD needed; the skill generates an OpenSpec change for the story and creates one board-visible Jira Task per significant goal, each linked back to the story (Jira Sub-tasks are avoided because they don't show on the board).
 - **Trivial fix or chore** → `/openspec-propose "description"` then `/sdd-create-tickets <change>`.
 
+Planning skills end by offering to commit their artifacts in their own `docs(sdd)` planning PR ([sdd/README.md § Committing planning artifacts](sdd/README.md)); merge it before starting work items.
+
 For implementation: `/sdd-work <ticket-id>` → code → `/sdd-verify` → review + PR → after merge, `/sdd-status` to archive + close parent. `/sdd-work` self-detects whether to run Fresh, Resume in-flight work, or Fix-from-PR review feedback. `/sdd-doctor` for a pre-flight check.
 
 All `sdd-*` skills except `/sdd-setup` accept `--dry-run` for previewing without committing; the openspec-* skills do not — see [sdd/README.md § Dry-run](sdd/README.md).

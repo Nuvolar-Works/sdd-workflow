@@ -4,9 +4,11 @@ Tracker-neutral operations used by SDD skills. Each operation has a concrete rec
 
 ## Active tracker selection
 
-1. Read `sdd/config.json`. The `tracker` field selects ticket operations (`github` or `jira`). The `vcs` field selects code/PR operations (always `github` for now).
+1. Read `sdd/config.json`. The `tracker` field selects ticket operations (`github` or `jira`). The `vcs` field selects the git host for branch/PR operations (`github` or `bitbucket` — Bitbucket Cloud). `tracker: github` requires `vcs: github`.
 2. Load `sdd/trackers/<tracker>.md` for ticket operations.
 3. Load `sdd/trackers/<vcs>.md` for branch/PR operations (often the same file).
+
+**Base branch.** Feature branches are cut from, and PRs target, `base_branch` in `sdd/config.json`. Fall back to the legacy `github.default_base_branch`, then to `develop`.
 
 ## Operations
 
@@ -30,7 +32,7 @@ Tracker-neutral operations used by SDD skills. Each operation has a concrete rec
 - **`FetchComments(id, limit?)`** — return an ordered list of `{author, created_at, body}` for the ticket, oldest first. Default `limit` = 30 (most recent). Pass `limit = "all"` to get the full thread (rare; use only when reasoning about long histories). Used by `/sdd-tasks-from-story` Phase 1.5 (story comments) and `/sdd-work` Phase 1.6 (work-item + parent-story comments).
 - **`AssignTicket(id, user)`** — assign the ticket to a user. `user` may be `@me` for the current authenticated user. Failures are non-fatal — log and continue (assignment is convenience, not correctness).
 - **`SearchTickets(query, limit?)`** — aggregate fetch. Returns an array of ticket payloads (same shape as `FetchTicket`) matching `query`. `query` is tracker-native (JQL for Jira, GitHub search syntax for GitHub). Used by `/sdd-status` to avoid N round-trips when reporting on multiple changes.
-- **`GetLinkedPR(id)`** — resolve the PR linked to a ticket. Returns `{ pr_number, state, merged_at }` (state is `MERGED` / `CLOSED` / `OPEN`) or `null` if no PR is linked. Used by `/sdd-status` Phase 5 to detect Class A (GitHub: closed-and-merged → archive eligible) and Class A.1 (Jira: in-review with merged PR → transition to done). GitHub recipe scans for the `Resolved in PR #<n>` closing comment, falling back to `closedByPullRequestsReferences` (only populated for PRs into the default branch); Jira recipe scans ticket comments for a GitHub PR URL and checks its state via `gh`.
+- **`GetLinkedPR(id)`** — resolve the PR linked to a ticket via the VCS recipe's `ParsePRUrl` / `GetPR`. Returns `{ pr_number, state, merged_at }` (state is `MERGED` / `CLOSED` / `OPEN`) or `null` if no PR is linked. Used by `/sdd-status` Phase 5 to detect Class A (GitHub: closed-and-merged → archive eligible) and Class A.1 (Jira: in-review with merged PR → transition to done). GitHub recipe scans for the `Resolved in PR #<n>` closing comment, falling back to `closedByPullRequestsReferences` (only populated for PRs into the default branch); Jira recipe scans ticket comments for a PR URL (`ParsePRUrl`) and checks its state via `GetPR`.
 
 ### Related tickets
 
@@ -46,11 +48,22 @@ Tracker-neutral operations used by SDD skills. Each operation has a concrete rec
 
 - **`EnsureLabel(name)`** — create the label/component if missing. No-op if it already exists. For Jira this maps to a label string (no creation needed).
 
-### VCS operations (provided by the `vcs` tracker file)
+### VCS operations (provided by the `vcs` recipe file)
 
-- **`CreateBranch(name, base)`** — create and check out a feature branch from `base`. Default base from `sdd/config.json` (`github.default_base_branch`).
+- **`VerifyVcsAuth()`** — confirm the git host's API is reachable and authenticated for this repo. Fail loudly with the remediation step if not.
+- **`CreateBranch(name, base)`** — create and check out a feature branch from `base` (default: the base branch above).
 - **`PushBranch(name)`** — push the current branch with upstream tracking.
-- **`CreatePR(payload)`** — create a pull/merge request. `payload` includes title, body, base, ticket link.
+- **`CreatePR(payload)`** — create a pull request. `payload` includes title, body, base, ticket link. Returns `{ number, url }`.
+- **`GetCurrentPR(detail?)`** — the most recent PR whose source is the current branch, or `null`. Returns `{ number, url, state }`; with `detail = true` also `review_decision`, `reviews`, `comments`, `inline_comments` and `checks` (shapes below).
+- **`GetPR(number)`** — `{ number, url, state, merged_at }` for one PR.
+- **`ParsePRUrl(text)`** — the PR number from the first PR URL for this repo's host found in `text`, or `null`.
+
+Normalised PR shapes, whatever the host:
+
+- `state`: `OPEN` | `MERGED` | `CLOSED` (closed without merging).
+- `review_decision`: `CHANGES_REQUESTED` | `APPROVED` | `NONE`.
+- `reviews[]`: `{ author, state, body }`; `comments[]`: `{ author, created_at, body }`; `inline_comments[]`: `{ author, path, line, body }`.
+- `checks[]`: `{ name, state, url }` with `state` `SUCCESS` | `FAILURE` | `PENDING` — the CI verdict reported on the PR, whatever CI system produced it.
 - **`LinkTicketToPR(ticket, pr)`** — record the PR URL on the ticket so reviewers can find the code. For GitHub, PRs target `develop`, so `Closes #N` does not auto-close; the recipe closes the issue via `CloseTicket` at PR creation. For Jira this means a Jira comment with the PR URL plus a transition to `in_review`.
 
 ## Calling convention
@@ -59,13 +72,13 @@ When a skill needs an operation, it should write something like:
 
 > Use `FetchTicket($ARGUMENTS)` from `sdd/trackers/<tracker>.md`.
 
-The active recipe file gives the exact command, JSON shape, and error handling. Skills do **not** embed `gh` or `mcp__claude_ai_Atlassian_Rovo__*` calls inline. Exception: read-only lookups of the current branch's PR (`gh pr view`, and its review comments via `gh api repos/{owner}/{repo}/pulls/<n>/comments`) may be run directly.
+The active recipe file gives the exact command, JSON shape, and error handling. Skills do **not** embed `gh`, `curl` or `mcp__claude_ai_Atlassian_Rovo__*` calls inline — PR lookups go through `GetCurrentPR` / `GetPR`. Plain `git` commands are host-neutral and may be run directly.
 
 ## Dry-run convention
 
 Skills accept a `--dry-run` flag in their arguments (parsed by each skill's Phase 0). When set:
 
-- **Read operations** (`FetchTicket`, `FetchComments`, `SearchTickets`, `GetLinkedPR`, `VerifyAuth`) run normally — the skill needs them to reason about state.
+- **Read operations** (`FetchTicket`, `FetchComments`, `SearchTickets`, `GetLinkedPR`, `VerifyAuth`, `VerifyVcsAuth`, `GetCurrentPR`, `GetPR`, `ParsePRUrl`) run normally — the skill needs them to reason about state.
 - **Write operations** (`CreateTicket`, `CreateChildTickets`, `CreateRelatedTicket`, `UpdateTicketStatus`, `CloseTicket`, `CommentOnTicket`, `AssignTicket`, `EnsureLabel`, `CreateBranch`, `PushBranch`, `CreatePR`, `LinkTicketToPR`) are **not executed**. Instead, print a single `[DRY RUN] would <op>(<args>)` line announcing the intended call and continue.
 - For operations that return ids the skill needs downstream (e.g. `CreateTicket`), return a synthetic id (`DRY-1`, `DRY-2`, …, incrementing per skill invocation) so dependency wiring still works.
 
