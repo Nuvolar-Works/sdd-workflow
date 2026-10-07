@@ -142,9 +142,9 @@ A Jira work-item ticket already in `jira.status_workflow.done` counts toward Cla
 14. **Class C is always safe** to run — it's a single-writer regeneration from authoritative tracker statuses. Even on `no`, offer to run **just the regeneration** ("Regenerate tasks.md anyway? (y/n)") because it has no side effects beyond the local repo and resolves the concurrency issue described in `sdd/README.md` § Concurrency.
 
 15. **Execution** (when not `DRY_RUN`):
-    - **Class A**: for each archive candidate, run `openspec archive <change> --yes`. Then rename the mapping file to `sdd/tasks/<change>.archived.md`.
-    - **Class A.1**: for each Jira work-item ticket whose PR is merged, run `UpdateTicketStatus(<jira-key>, "done")`. Order matters — run Class A.1 **before** Class A's archive check is re-evaluated for the same change, so a change whose only remaining "not done" work item is a Class A.1 candidate becomes eligible for Class A archival in the same sweep. (Practical execution: process A.1 first, then C, then A, then B — C must run before A moves `tasks.md` into the archive.)
-    - **Class B**: for each parent story, draft a Closing Summary comment aggregating the work-item summaries (use `sdd/templates/ticket-comment-shapes.md` § Closing summary). Show the draft. On user `yes`, post via `CommentOnTicket(<story-key>, body)` then run `UpdateTicketStatus(<story-key>, "done")`.
+    - **Class A**: for each archive candidate, follow `sdd/README.md` § Archiving — it runs `openspec archive <change> --yes` between a pre-flight and an on-disk success check, and renames the mapping file to `sdd/tasks/<change>.archived.md` only on success. A change that fails pre-flight or archiving is skipped and listed as "needs fix" with the reason; continue with the next candidate.
+    - **Class A.1**: for each Jira work-item ticket whose PR is merged, run `UpdateTicketStatus(<jira-key>, "done")`. On `transitioned` or `already` (e.g. moved by a merge automation since Phase 2), update that ticket's status in the in-memory aggregate so Classes C, A and B see it. On `unreachable`, list it in the sweep summary with its current status and available transitions, and drop its change from Class A and its parent story from Class B for this sweep — it is not done. Order matters — run Class A.1 **before** Class A's archive check is re-evaluated for the same change, so a change whose only remaining "not done" work item is a Class A.1 candidate becomes eligible for Class A archival in the same sweep. (Practical execution: process A.1 first, then C, then A, then B — C must run before A moves `tasks.md` into the archive.)
+    - **Class B**: for each parent story, draft a Closing Summary comment aggregating the work-item summaries (use `sdd/templates/ticket-comment-shapes.md` § Closing summary). Show the draft. On user `yes`, post via `CommentOnTicket(<story-key>, body)` then run `UpdateTicketStatus(<story-key>, "done")`. On `unreachable`, report the story's current status and available transitions so the user can close it manually.
     - **Class C**: for each change, regenerate `openspec/changes/<change>/tasks.md`:
       - Read the current `tasks.md`.
       - For each `## N. <title> [<key>]` (or `(#N)`) section header:
@@ -154,7 +154,7 @@ A Jira work-item ticket already in `jira.status_workflow.done` counts toward Cla
       - Write atomically (single read-modify-write). Leave changes uncommitted and list the modified files.
 
 16. **Execution** (when `DRY_RUN`):
-    - For each candidate, print `[DRY RUN] would <op>(...)`.
+    - For each candidate, print `[DRY RUN] would <op>(...)`. For Class A, run the read-only archive pre-flight (`sdd/README.md` § Archiving step 1) so blocked archives show up as `[DRY RUN] would skip <change>: <reason>`.
     - Don't write anything.
     - The output otherwise looks identical so the user can preview the impact.
 

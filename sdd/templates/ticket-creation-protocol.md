@@ -20,7 +20,7 @@ Read change_dir/tasks.md
 Read change_dir/proposal.md
 Read change_dir/specs/*/spec.md (via glob)
 Read change_dir/design.md
-Optional: read change_dir/api-contract.yaml when present.
+Optional: read change_dir/api-contract.* when present.
 ```
 
 ## Step 2: Group tasks by section header
@@ -37,16 +37,18 @@ For each section, derive:
 |-------|------|
 | **Title** | Section name verbatim (e.g. "Database Layer", "Clock-in panel"). Optionally prefix with team-area convention (e.g. "Frontend: Clock-in panel"). |
 | **Type** | Work items (`is_work_item=true`): derive from the DoD goal type (Setup → `chore`, Refactor → `refactor`, Test → `test`, otherwise → `feat`). Otherwise, first match of these section-title keywords (whole words, case-insensitive):<br>- `setup`, `config`, `infrastructure`, `init` → `chore`<br>- `test`, `tests` → `test`<br>- `docs`, `documentation` → `docs`<br>- `refactor` → `refactor`<br>- `fix`, `bug` → `fix`<br>- otherwise → `feat` |
-| **Priority** | By section order: first third → `high`, middle third → `medium`, last third → `low`. Override if the section description explicitly states a priority. |
+| **Priority** | By section order: first third → `high`, middle third → `medium`, last third → `low`. Override if the section description explicitly states a priority. Advisory: used for ordering only; tracker recipes do not send it (see each recipe's `CreateTicket`). |
 | **Labels** | Kebab-case section name plus the type. Plus any stage label (`stage-NN-<slug>`) if the calling skill is staged. Plus `follow-up` if created by `CreateRelatedTicket`. |
 | **Acceptance Criteria** | Match GIVEN-WHEN-THEN scenarios from the relevant `specs/<capability>/spec.md` file (heuristic: section-title keyword match). If no scenario matches, derive 2-4 criteria from the section's subtasks. |
 | **Implementation Hints** | Relevant excerpts from `design.md` for this section's scope. |
-| **Design Excerpt** | (work-item only — `is_work_item=true`) 5-15 line quote from the relevant section of `design.md` including its heading. |
-| **API Integration** | (work-item only) Include the section iff goal type is **Integration** per `sdd/templates/definition-of-done.md` § Goal-type detection. Body: endpoint signature + request/response shape from `api-contract.yaml` when present, otherwise from `design.md` § API Integration; omit the section if neither has endpoint details. |
+| **Design Excerpt** | (work-item only — `is_work_item=true`) 5-15 line excerpt from the relevant section of `design.md`, as plain paragraphs with the source heading as a bold lead-in. |
+| **API Integration** | (work-item only) Include the section iff goal type is **Integration** per `sdd/templates/definition-of-done.md` § Goal-type detection. Body: endpoint signature + request/response shape from `api-contract.*` when present, otherwise from `design.md` § API Integration; omit the section if neither has endpoint details. |
 | **Definition of Done** | (work-item only) Determine goal type via `sdd/templates/definition-of-done.md` § Goal-type detection, then pull the matching block per § Blocks. Apply the inline-vs-reference rule from § Inlining vs reference (Setup / Refactor get a one-line reference; UI / Integration / Test / Generic get the full inlined block). |
 | **Dependencies** | Ids of earlier sections this section actually needs (per `tasks.md`/`design.md`), whether created this run or captured as existing; `None` if independent. Always ids. |
 
 ## Step 4: Build the ticket body
+
+Text copied into the body from `proposal.md`, `design.md` or spec files is written as plain paragraphs: never use `>` blockquotes, and strip a leading `> ` from copied lines — some trackers drop blockquoted lines silently.
 
 ```markdown
 ## Description
@@ -70,7 +72,7 @@ Endpoint: <METHOD path>
 Request shape: <key fields>
 Response shape: <key fields>
 Error responses: <code → meaning>
-Source: <api-contract.yaml or design.md § API Integration>
+Source: <api-contract.* or design.md § API Integration>
 
 ## Definition of Done                    ← work-item only
 <DoD block from definition-of-done.md>

@@ -49,7 +49,7 @@ All `sdd-*` skills except `/sdd-setup` accept `--dry-run` for previewing without
 - SDD skills: `.claude/skills/sdd-*/SKILL.md`.
 - OpenSpec skills: `.claude/skills/openspec-*/SKILL.md`.
 - OpenSpec living specs: `openspec/specs/` (grows over time, archive of completed changes).
-- OpenSpec changes in flight: `openspec/changes/<change-name>/` (proposal, specs, design, tasks; api-contract.yaml when an API is involved).
+- OpenSpec changes in flight: `openspec/changes/<change-name>/` (proposal, specs, design, tasks; api-contract.* when an interface contract is involved).
 
 ## Commands
 

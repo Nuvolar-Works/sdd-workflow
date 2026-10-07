@@ -25,6 +25,8 @@ You are creating or updating the project constitution — a living document spli
    - Build / framework configs: `package.json`, `tsconfig.json`, `next.config.*`, `vite.config.*`, `angular.json`, etc.
    - Linting: `.eslintrc*`, `.prettierrc*`, `biome.json`
    - Testing: `vitest.config.*`, `jest.config.*`, `playwright.config.*`
+   - Build manifests and task runners: `Makefile`, `pom.xml`, `build.gradle*`, `pyproject.toml`, `go.mod`, `*.csproj`, `sfdx-project.json`, etc.
+   - CI config: pipeline files such as `.github/workflows/*.yml`, `.gitlab-ci.yml`, `azure-pipelines.yml`, `Jenkinsfile`, `bitbucket-pipelines.yml`, `.circleci/config.yml`, or a path the user gives
    - Existing PRDs in `sdd/prds/` or `docs/prds/` for any "Technical Considerations" sections
    - Source code patterns (folder structure, naming, imports)
 
@@ -51,7 +53,7 @@ You are creating or updating the project constitution — a living document spli
 
    **Batch 2 — Conventions & Patterns** (skip known): folder pattern (feature-/layer-/domain-based), naming conventions, component patterns, import conventions, error handling.
 
-   **Batch 3 — Quality & Governance**: quality gates (lint, build, test, type-check), test expectations (unit / E2E / coverage), accessibility, performance, security, NON-NEGOTIABLE rules from past incidents.
+   **Batch 3 — Quality & Governance**: quality gates (proposed from CI config when found — see step 10), test expectations (unit / E2E / coverage), accessibility, performance, security, NON-NEGOTIABLE rules from past incidents.
 
    For each batch, present detected/inferred defaults and let the user confirm or override. Only ask about genuinely unknown items.
 
@@ -87,7 +89,14 @@ You are creating or updating the project constitution — a living document spli
    - Any nested rules (i18n hook conventions, variable naming, etc.) the user specified.
 
 10. Write **`sdd/constitution/quality-gates.md`** with:
-    - The numbered list of NON-NEGOTIABLE quality gates, each with the exact command in backticks (e.g. `npm run lint`, `npm run build`, `npx tsc --noEmit`, `npm test`), plus coverage threshold and RBAC verification where applicable.
+    - The numbered list of NON-NEGOTIABLE quality gates. If CI config was detected, read the jobs that run on pull/merge requests to the base branch and propose each step as one of:
+      - **local** — the project's own entry point as CI invokes it (script, task-runner target or CLI command), its source (`CI job <name>` | manifest | user), and prerequisites (required env var names, org/account alias, running services — never values).
+      - **CI-only** — with a one-line reason: deploys/publishes/releases, needs CI-only infrastructure or credentials, or too slow to run per ticket.
+
+      Mark steps mapped from a CI action/task rather than a plain command as `derived — confirm`. Never propose deploy/publish/release steps as local gates. The user confirms or edits the whole list.
+    - Every gate carries an exact command in backticks, or is explicitly marked `review-only` or `CI-only` — a gate without either is reported NOT CONFIGURED by `/sdd-work` and `/sdd-verify`. Shape: `` `<command>` — source: CI job `<name>` ``.
+    - When gates were derived from CI, a `CI baseline:` line with the CI config paths and the commit they were read at, so `/sdd-verify` and `/sdd-doctor` can warn when CI changes.
+    - Coverage threshold and RBAC verification where applicable.
     - Error handling rules.
     - Specification / Plan / Task content requirements.
     - Development workflow notes (cross-reference CLAUDE.md for git conventions instead of duplicating them).

@@ -42,6 +42,8 @@ ISSUE_EOF
 
 `payload.body` is the full body built by `sdd/templates/ticket-creation-protocol.md` Step 4 (including caller additions like Stage Context and the `Source:` footer). Pass it verbatim; do not re-template.
 
+`payload.priority` is not sent: GitHub Issues have no native priority field.
+
 Capture the URL printed by `gh issue create` and parse the issue number from the URL tail.
 
 ## CreateChildTickets(parent_id, payloads[])
@@ -54,9 +56,11 @@ GitHub has no native parent/child relationship. Emulate by:
 ## UpdateTicketStatus(id, status)
 
 GitHub has no workflow states beyond open/closed. For each status:
-- `in_progress` → no-op, optionally `gh issue comment <id> --body "Started work."` (skip by default).
-- `in_review` → typically the PR creation handles this implicitly; no explicit transition.
-- `done` → call `CloseTicket`.
+- `in_progress` → no-op, optionally `gh issue comment <id> --body "Started work."` (skip by default). Return `transitioned`.
+- `in_review` → typically the PR creation handles this implicitly; no explicit transition. Return `transitioned`.
+- `done` → if the issue is already closed, return `already`; otherwise call `CloseTicket` and return `transitioned`.
+
+Never returns `unreachable`.
 
 ## CloseTicket(id, comment)
 

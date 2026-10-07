@@ -65,14 +65,21 @@ Mirrors `/sdd-work`'s spec-loading so the Design Alignment check in Phase 2 has 
 
 ## Phase 2: Verify
 
-If `git status --porcelain` is non-empty, list the files and ask the user to commit or stash them before continuing (uncommitted edits would pass the checks but never reach the PR).
+If `git status --porcelain` is non-empty, list the files and ask the user to either commit this ticket's files (`git add <paths>` — never `git add -A` or `git add .`, which sweeps in unrelated work) or confirm the rest are unrelated and continue with them left uncommitted (uncommitted edits would pass the checks but never reach the PR).
 
-14. Review all changes on this branch versus the base:
+14. Review all changes on this branch versus the base, using the merge base so changes merged into the base after the branch was cut don't count as this branch's work:
     ```bash
+    MB=$(git merge-base origin/<base> HEAD)
     git log origin/<base>..HEAD --oneline
-    git diff origin/<base>..HEAD --stat
+    git diff $MB HEAD --stat
     ```
-    Read through the changed files to understand what was implemented.
+    If there is no merge base (e.g. a shallow clone), fall back to `git diff origin/<base>..HEAD --stat` and warn that the diff may include base-branch changes. Read through the changed files to understand what was implemented.
+
+    **Stray-file scan.** List the net-diff paths (`git diff $MB HEAD --name-only`) and flag any path under `openspec/`, `sdd/tasks/` or `sdd/prds/` that does not start with `openspec/changes/<CHANGE_NAME>/`, `sdd/tasks/<CHANGE_NAME>` or `sdd/prds/<CHANGE_NAME>`. Living specs (`openspec/specs/**`) and archive output (`openspec/changes/archive/**`) are therefore always flagged, and so is every planning path when `CHANGE_NAME = none`. These usually arrive when another session's `git add -A` sweeps up uncommitted planning files. If any are flagged, list them and ask via **AskUserQuestion**:
+    - **Remove from this PR (recommended)** — `git restore --source=$MB --staged -- <paths>`, then commit `chore(sdd): remove stray planning files <ticket-ref>`. Only the index changes; the working-tree copies stay as they are, so nothing is lost. Never rewrite history.
+    - **Keep them** — the user confirms they belong in this PR.
+
+    When `DRY_RUN`, list the strays and print `[DRY RUN] would remove <n> stray files in a new commit`.
 
 15. Check each acceptance criterion from the ticket body:
     - Verify it is met by examining the code.
@@ -89,7 +96,9 @@ If `git status --porcelain` is non-empty, list the files and ask the user to com
 
     Legacy fallback: read `docs/constitution.md` if `sdd/constitution/index.md` is absent.
 
-17. Run the gate commands listed in `sdd/constitution/quality-gates.md`, in order; if absent, fall back to `npm test` / `npm run lint` / `npm run build` for the scripts that exist in `package.json`. Append `; echo "exit=$?"` to each command; exit 0 → PASS, non-zero → FAIL, undefined script → NOT CONFIGURED.
+17. Run the gate commands listed in `sdd/constitution/quality-gates.md`, in order. Append `; echo "exit=$?"` to each command; exit 0 → PASS, non-zero → FAIL, command not found → NOT CONFIGURED. A gate with no runnable command (unless marked `review-only`) is NOT CONFIGURED — never skip it silently. Gates marked `CI-only` are not run; list them as `CI-only (not run locally)`. If `quality-gates.md` is absent, run nothing and report `Project checks: NOT CONFIGURED — run /sdd-constitution`; never guess gate commands from build manifests or CI config.
+
+    If `quality-gates.md` has a `CI baseline` line, run `git diff <baseline-commit>..HEAD -- <ci-paths>`. If the diff adds or changes commands CI executes (not just version pins), warn: `CI config changed since the gates were set — re-run /sdd-constitution`.
 
 18. Read `sdd/templates/code-review-checklist.md` and run through each section in order against the changed files. For each category, mark CLEAN or list specific findings with file:line references. The Design Alignment check (checklist § 5) uses the spec + design excerpts captured in Phase 1.5; if `CHANGE_NAME` was `none`, that row is `N/A`.
 
@@ -109,15 +118,17 @@ If `git status --porcelain` is non-empty, list the files and ask the user to com
     - Error handling: CLEAN / <issues>
     - Design alignment: CLEAN / N/A / <deviations>
     - Constitution compliance: CLEAN / N/A / <violations>
+    - Contract fidelity: CLEAN / N/A / <issues>
+    - Stray files: CLEAN / <removed or kept paths>
 
     ### Project Checks (one row per gate run in step 17)
-    - <gate>: PASS/FAIL/NOT CONFIGURED
+    - <gate>: PASS / FAIL / NOT CONFIGURED / CI-only (not run locally)
 
     ### Summary
     <Overall assessment>
     ```
 
-20. If any acceptance criterion FAILs or any project check fails, tell the user what needs fixing and stop. Do NOT create a PR for incomplete work.
+20. If any acceptance criterion FAILs or any project check fails, tell the user what needs fixing and stop. Do NOT create a PR for incomplete work. If any gate is NOT CONFIGURED, say which and ask the user to confirm before continuing — an unrun gate is not a pass.
 
 21. If code review flags issues, present them to the user as recommendations (not blockers); NON-NEGOTIABLE constitution violations are flagged as blocker recommendations, but the user still decides. Ask: "I found some code review items. Want to address them before the PR, or proceed as-is?"
 
@@ -160,7 +171,7 @@ This commit is pushed in Phase 3, so the checkbox update is part of the feature 
 
 26. Run `LinkTicketToPR(<ticket-id>, <pr>)` from the active tracker recipe. This:
     - For GitHub: calls `CloseTicket(<ticket-id>, "Resolved in PR #<pr-id>.")` because PRs target `develop` (not the default branch) and GitHub only auto-closes on default-branch merge.
-    - For Jira: posts a comment with the PR URL on the ticket and runs `UpdateTicketStatus(<ticket-id>, "in_review")`; the GitHub PR carries the `Resolves <JIRA-KEY>` reference.
+    - For Jira: posts a comment with the PR URL on the ticket and runs `UpdateTicketStatus(<ticket-id>, "in_review")`; the GitHub PR carries the `Resolves <JIRA-KEY>` reference. If that returns `unreachable`, print one warning — `<ticket-id> left in <current_status>; <jira.status_workflow.in_review> not reachable from there. PR link posted; move it manually if needed.` — and continue. Never fail the PR step over it.
 
     When `DRY_RUN`, print the intended `LinkTicketToPR(...)` call without executing.
 

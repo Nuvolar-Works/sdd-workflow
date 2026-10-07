@@ -11,7 +11,7 @@ Apply heuristics in order; first match wins. Match whole words, case-insensitive
 | **Setup / chore** | Section title contains `setup`, `config`, `infrastructure`, `tooling`, `init`, `install`, `dependencies` |
 | **Refactor** | Section title contains `refactor`, `cleanup`, `migrate`, `consolidate` |
 | **Test** | Section title contains `test`, `tests`, `coverage`, `e2e`, `unit` |
-| **Integration** | Section title contains `integration`, `API`, `endpoint`, `client`, `wiring`, `backend`; or section description references `api-contract.yaml` |
+| **Integration** | Section title contains `integration`, `API`, `endpoint`, `client`, `wiring`, `backend`; or section description references `api-contract.*` |
 | **UI** | Section title or description references components, panels, pages, forms, layout, styling — when none of the above match. (Default for most user-facing goals.) |
 | **Generic** | Fallback when nothing matches. Rarely needed. |
 

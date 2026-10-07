@@ -60,7 +60,7 @@ You don't need to copy `sdd/` — `/sdd-setup` seeds it from its own bundle.
 
 `.mcp.json` needs no manual merge — `/sdd-setup` appends to it.
 
-**3. Run setup** — `/sdd-setup`, `/sdd-constitution`, `/sdd-doctor`, as in [Quick Start](#quick-start). On an existing codebase `/sdd-constitution` detects your stack from `package.json`, build configs and folder structure; review its proposal rather than writing standards from scratch.
+**3. Run setup** — `/sdd-setup`, `/sdd-constitution`, `/sdd-doctor`, as in [Quick Start](#quick-start). On an existing codebase `/sdd-constitution` detects your stack from build manifests, CI config and folder structure, and proposes quality gates from what CI runs on pull requests; review its proposal rather than writing standards from scratch.
 
 **Check before you start:**
 - **Base branch** — `/sdd-setup` asks which branch feature PRs target (`develop` by default). If you're trunk-based, pick `main` and update the branching line in your `CLAUDE.md` to match.
@@ -254,12 +254,12 @@ The PRD template sections:
 | **UI/UX Notes** | Wireframes, mockups, descriptions | Design decisions |
 | **Technical Considerations** | Constraints, integrations | Implementation hints |
 | **Dependencies** | External services, APIs | Blocking issues |
-| **API Contract** | Swagger/OpenAPI file path or URL (optional) | API-enriched specs, design, and tasks |
+| **API Contract** | Interface contract file path or URL — OpenAPI, GraphQL SDL, .proto, AsyncAPI… (optional) | API-enriched specs, design, and tasks |
 | **Open Questions** | Unresolved items | Flagged before spec generation |
 
 ### Adding a Backend API Contract (optional)
 
-Reference the Swagger/OpenAPI spec in the PRD's **API Contract** section:
+Reference the interface contract in the PRD's **API Contract** section:
 
 ```markdown
 ## API Contract
@@ -359,7 +359,7 @@ sdd-workflow/
 |   |   +-- .gitkeep
 |   |-- tasks/                             # Ticket mapping files (commit — /sdd-status reads them)
 |   |   +-- .gitkeep
-|   |-- apis/                              # Swagger/OpenAPI source files (optional)
+|   |-- apis/                              # Interface contracts or pointers to them (optional)
 |   |   +-- .gitkeep
 |   |-- templates/                         # Workflow templates (design-challenge, code-review, etc.)
 |   +-- trackers/                          # Tracker protocol + GitHub and Jira adapters

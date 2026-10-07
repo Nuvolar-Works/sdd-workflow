@@ -86,7 +86,7 @@ sdd/
 ├── config.json              ← tracker + VCS selection (config.example.json for reference)
 ├── constitution/            ← project standards split into one file per concern
 ├── prds/                    ← versioned PRDs
-├── apis/                    ← Swagger / OpenAPI files (optional)
+├── apis/                    ← interface contracts, or pointers to where they live (optional)
 ├── tasks/                   ← issue-mapping files per change
 ├── trackers/                ← protocol.md + per-tracker recipes (github.md, jira.md)
 ├── templates/               ← shared templates loaded on demand by skills
@@ -136,9 +136,29 @@ The four ticket-creating skills detect existing state in Phase 0.5 and prompt **
 
 Post-merge, run `/sdd-status`. Walks active changes and offers (with prompts):
 
-- **Class A** — archive changes with all tickets done (`openspec archive <change> --yes`).
+- **Class A** — archive changes with all tickets done (via the § Archiving procedure below).
 - **Class B** — close parent stories with all linked work items done (status transition + Closing Summary comment).
 - **Class C** — reconcile `tasks.md` checkboxes against ticket statuses (backstop for drift; `/sdd-verify` does the primary per-section flip). Always safe; offered separately.
+
+### Archiving
+
+`openspec archive` is not transactional: when one capability fails validation after others were already written, those writes stay in `openspec/specs/`, the CLI may still print "No files were changed" and exit 0, and a retry then fails with "ADDED already exists". Both archive paths (`/openspec-archive-change` step 5 and `/sdd-status` Class A) run this procedure per change instead of calling the CLI bare:
+
+1. **Pre-flight (read-only).** For each `openspec/changes/<name>/specs/<cap>/` whose living spec `openspec/specs/<cap>/spec.md` exists, run `openspec validate <cap> --type spec --no-interactive`. Also confirm `openspec/changes/archive/<YYYY-MM-DD>-<name>/` does not exist yet. On any failure, report it and do not archive. A failing living spec needs `## Purpose` plus `## Requirements` with `### Requirement:` blocks and no `ADDED`/`MODIFIED`/`REMOVED`/`RENAMED` headers — the user repairs it; never repair it automatically.
+2. **Snapshot.** Copy `openspec/specs/` to a temp dir (`SNAP=$(mktemp -d) && cp -R openspec/specs "$SNAP/"`). Skip when archiving with `--skip-specs`.
+3. **Archive.** `openspec archive <name> --yes [--skip-specs]`.
+4. **Judge success on disk**, not by exit code or output text: `openspec/changes/<name>/` is gone and the archive dir exists. On failure, restore the snapshot wholesale (`rm -rf openspec/specs && cp -R "$SNAP/specs" openspec/specs`), which also removes capability dirs the failed run created. Show the CLI output verbatim.
+5. **Mapping.** Only after step 4 confirms success, rename `sdd/tasks/<name>.md` to `sdd/tasks/<name>.archived.md`.
+
+Under `--dry-run`, run step 1 only and print `[DRY RUN] would archive <name>` or `[DRY RUN] would skip <name>: <reason>`.
+
+### Interface contracts
+
+An interface contract is a machine-readable schema for an interface whose other side is not built or tested in this repo — another team's API, an external service, an event stream (OpenAPI, GraphQL SDL, `.proto`, AsyncAPI, JSON Schema, …). In-repo schemas the toolchain already enforces (ORM models, platform object metadata, data-model definitions) don't count.
+
+- **Where it lives.** The maintained source is `sdd/apis/` (the contract itself, or a short pointer file to where it lives) or the path/URL a PRD's `## API Contract` section references. `openspec/changes/<change>/api-contract.*` is a snapshot taken when the change was created — use it only when no maintained source is available. If the two disagree on something in scope, report contract drift rather than picking one.
+- **Precedence.** On shape — operation and field names, types, optionality, enum values, documented outcomes — the contract beats prose (`design.md`, other teams' ticket text, story text). The PRD still wins on scope.
+- **Used by** `/sdd-tasks-from-story` (design and codebase audit) and `/sdd-verify` (code-review checklist § 7).
 
 ### Dry-run
 
