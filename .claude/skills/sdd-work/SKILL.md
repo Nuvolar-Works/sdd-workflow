@@ -74,7 +74,7 @@ This phase decides whether to run **Fresh**, **Resume**, or **Fix-from-PR** mode
     ```
     If found, extract `<CHANGE_NAME>`. If not, skip Phase 1.5.
 
-13. Fresh mode only: call `UpdateTicketStatus($ARGUMENTS, "in_progress")` (Jira: real transition; GitHub: no-op). If the transition is unavailable, warn and continue. When `DRY_RUN`, print the intended call.
+13. Fresh mode only: call `UpdateTicketStatus($ARGUMENTS, "in_progress")` (Jira: real transition; GitHub: no-op). If it returns `unreachable`, warn with the current status and continue. When `DRY_RUN`, print the intended call.
 
 ## Phase 1.5: OpenSpec Context (lazy, only if linked)
 

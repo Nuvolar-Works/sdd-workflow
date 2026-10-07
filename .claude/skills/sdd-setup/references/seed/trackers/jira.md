@@ -75,9 +75,14 @@ Return the list of `<child_key>` values. Each work item now shows on the board a
 
 ## UpdateTicketStatus(id, status)
 
-Call `getTransitionsForJiraIssue`; pick the transition whose `to.name` equals `jira.status_workflow[<status>]` (fall back to a match on the transition `name`); pass its `id` to `transitionJiraIssue`.
+Let `target = jira.status_workflow[<status>]`.
 
-If the transition isn't available from the current status (Jira workflows can have gates), report the available transitions and stop — don't force.
+1. Read the current status (`getJiraIssue`, `fields: ["status"]`). If it equals `target` (case-insensitive, trimmed), return `already`.
+2. Call `getTransitionsForJiraIssue`; pick the transition whose `to.name` equals `target` (fall back to a match on the transition `name`); pass its `id` to `transitionJiraIssue` and return `transitioned`.
+3. **One hop, review only.** Some workflows (e.g. Jira Tasks) only offer the review status from in-progress. If `status` is `in_review`, the target was not offered, and `jira.status_workflow.in_progress` is: transition to it, call `getTransitionsForJiraIssue` again, and if `target` is offered now, transition and return `transitioned`. Never hop for `done` — Jira has no status ordering, so a hop could move a ticket backwards out of review.
+4. Otherwise return `unreachable` with the ticket's actual current status (after any hop) and the offered transition names.
+
+Never pick a transition by guessing and never fill in required transition-screen fields; if a transition call fails, return `unreachable` with the status the ticket is in now.
 
 ## CloseTicket(id, comment)
 

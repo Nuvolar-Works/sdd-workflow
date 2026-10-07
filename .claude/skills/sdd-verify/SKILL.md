@@ -168,7 +168,7 @@ This commit is pushed in Phase 3, so the checkbox update is part of the feature 
 
 26. Run `LinkTicketToPR(<ticket-id>, <pr>)` from the active tracker recipe. This:
     - For GitHub: calls `CloseTicket(<ticket-id>, "Resolved in PR #<pr-id>.")` because PRs target `develop` (not the default branch) and GitHub only auto-closes on default-branch merge.
-    - For Jira: posts a comment with the PR URL on the ticket and runs `UpdateTicketStatus(<ticket-id>, "in_review")`; the GitHub PR carries the `Resolves <JIRA-KEY>` reference.
+    - For Jira: posts a comment with the PR URL on the ticket and runs `UpdateTicketStatus(<ticket-id>, "in_review")`; the GitHub PR carries the `Resolves <JIRA-KEY>` reference. If that returns `unreachable`, print one warning — `<ticket-id> left in <current_status>; <jira.status_workflow.in_review> not reachable from there. PR link posted; move it manually if needed.` — and continue. Never fail the PR step over it.
 
     When `DRY_RUN`, print the intended `LinkTicketToPR(...)` call without executing.
 

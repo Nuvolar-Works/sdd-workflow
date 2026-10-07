@@ -54,9 +54,11 @@ GitHub has no native parent/child relationship. Emulate by:
 ## UpdateTicketStatus(id, status)
 
 GitHub has no workflow states beyond open/closed. For each status:
-- `in_progress` → no-op, optionally `gh issue comment <id> --body "Started work."` (skip by default).
-- `in_review` → typically the PR creation handles this implicitly; no explicit transition.
-- `done` → call `CloseTicket`.
+- `in_progress` → no-op, optionally `gh issue comment <id> --body "Started work."` (skip by default). Return `transitioned`.
+- `in_review` → typically the PR creation handles this implicitly; no explicit transition. Return `transitioned`.
+- `done` → if the issue is already closed, return `already`; otherwise call `CloseTicket` and return `transitioned`.
+
+Never returns `unreachable`.
 
 ## CloseTicket(id, comment)
 
