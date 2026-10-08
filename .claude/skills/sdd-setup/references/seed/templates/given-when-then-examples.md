@@ -100,5 +100,5 @@ AND no duplicate entry is sent on retry
 
 - Every scenario should be **independently testable**. Avoid scenarios that depend on prior scenarios' state.
 - Use concrete values where they matter (status/error codes, role names, error messages). Avoid "the system responds appropriately."
-- When an interface contract is provided (`sdd/README.md` § Interface contracts), reference the actual operation and shape.
+- When an interface contract is provided (`sdd/docs/interface-contracts.md`), reference the actual operation and shape.
 - Edge cases to consider routinely: empty input, max-size input, bulk/large-volume input, concurrent updates, expired session, role boundary, missing/null intermediate values.

@@ -3,8 +3,8 @@
 #
 # /sdd-setup carries a seed copy of the user-facing sdd/ files so a brand-new
 # project can bootstrap from the skill alone. Whenever a file under
-# sdd/templates/, sdd/trackers/, or the top-level sdd/ scaffold (config.example.json,
-# README.md, prd-template*.md) changes, run this script to keep the seed in sync.
+# sdd/templates/, sdd/trackers/, the top-level sdd/ scaffold (config.example.json,
+# README.md, prd-template*.md) or the guides under sdd/docs/ change, run this script to keep the seed in sync.
 #
 # Idempotent. Safe to run any number of times.
 
@@ -59,6 +59,15 @@ for src in "$SDD_DIR"/templates/*.md; do
   [[ -f "$src" ]] || continue
   cp "$src" "$SEED_DIR/templates/"
   echo "  synced  templates/$(basename "$src")"
+done
+
+# Guides
+mkdir -p "$SEED_DIR/docs"
+rm -f "$SEED_DIR"/docs/*.md
+for src in "$SDD_DIR"/docs/*.md; do
+  [[ -f "$src" ]] || continue
+  cp "$src" "$SEED_DIR/docs/"
+  echo "  synced  docs/$(basename "$src")"
 done
 
 echo "done. seed bundle at $SEED_DIR is up to date."

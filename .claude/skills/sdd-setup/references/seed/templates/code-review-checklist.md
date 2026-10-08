@@ -41,7 +41,7 @@ Used by `/sdd-verify` for the code-review step. Each section produces either CLE
 - If `sdd/constitution/review-checklist.md` exists, apply its stack-specific heuristics under the matching category above (§§ 1-4) and report findings there.
 - Load `sdd/constitution/design-system.md` and `sdd/constitution/utilities.md` (if they exist) only when a changed path matches one of the file's `Load when` globs in `sdd/constitution/index.md`; check the changes against the rules it defines. If the table has no `Load when` column, load the file when the changed paths plausibly fall in the area its Purpose describes.
 
-## 7. Contract fidelity (only if an interface contract resolves per `sdd/README.md` § Interface contracts and the diff produces or consumes that interface or its test doubles)
+## 7. Contract fidelity (only if an interface contract resolves per `sdd/docs/interface-contracts.md` and the diff produces or consumes that interface or its test doubles)
 
 - Every operation, field, enum value and outcome the changed code uses exists in the contract with the same name, type and optionality. Flag anything invented beyond it ("the other side might send it").
 - Test doubles (mocks, stubs, fakes, fixtures, recorded responses) return the contract's shape and only outcomes it documents (responses, error codes, events). A double that returns an outcome the real interface never produces hides bugs behind green tests.

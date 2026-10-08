@@ -1,6 +1,6 @@
 # SDD Workflow
 
-The Spec-Driven Development workflow is documented in [sdd/README.md](sdd/README.md). That file is the canonical reference for the folder layout, the two tracker modes (GitHub / Jira), the PRD decision tree, and the full skill catalogue.
+The Spec-Driven Development workflow is documented in [sdd/README.md](sdd/README.md). That file is the hub — tracker modes, entry-point decision tree, skill catalogue, folder layout — and links to topic guides in [sdd/docs/](sdd/docs/).
 
 ## Project Setup (one-time, brand-new project)
 
@@ -16,11 +16,11 @@ The full decision tree (greenfield vs increment vs Jira story vs trivial) lives 
 - **Single Jira user story** → `/sdd-tasks-from-story <JIRA-KEY>`. No PRD needed; the skill generates an OpenSpec change for the story and creates one board-visible Jira Task per significant goal, each linked back to the story (Jira Sub-tasks are avoided because they don't show on the board).
 - **Trivial fix or chore** → `/openspec-propose "description"` then `/sdd-create-tickets <change>`.
 
-Planning skills end by offering to commit their artifacts in their own `docs(sdd)` planning PR ([sdd/README.md § Committing planning artifacts](sdd/README.md)); merge it before starting work items.
+Planning skills end by offering to commit their artifacts in their own `docs(sdd)` planning PR ([sdd/docs/planning-prs.md](sdd/docs/planning-prs.md)); merge it before starting work items.
 
 For implementation: `/sdd-work <ticket-id>` → code → `/sdd-verify` → review + PR → after merge, `/sdd-status` to archive + close parent. `/sdd-work` self-detects whether to run Fresh, Resume in-flight work, or Fix-from-PR review feedback. `/sdd-doctor` for a pre-flight check.
 
-All `sdd-*` skills except `/sdd-setup` accept `--dry-run` for previewing without committing; the openspec-* skills do not — see [sdd/README.md § Dry-run](sdd/README.md).
+All `sdd-*` skills except `/sdd-setup` accept `--dry-run` for previewing without committing; the openspec-* skills do not — see [sdd/docs/workflow.md § Dry-run](sdd/docs/workflow.md#dry-run).
 
 ## Review Gates
 

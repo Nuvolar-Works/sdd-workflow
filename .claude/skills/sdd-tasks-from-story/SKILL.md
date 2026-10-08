@@ -98,7 +98,7 @@ This requires Jira mode (`tracker: "jira"` in `sdd/config.json`): each goal is a
 9b. Read `sdd/templates/codebase-audit.md` for the workflow. Run it with:
     - `ac_items` — the AC list extracted from the story description plus any AC-modifying highlights returned by Phase 1.5.
     - `cross_team_context` — the **other-team** bucket from Phase 0.5 step 5b (titles + descriptions only).
-    - `interface_contract` — resolved per `sdd/README.md` § Interface contracts, if any.
+    - `interface_contract` — resolved per `sdd/docs/interface-contracts.md`, if any.
 
     The template:
     - Maps each AC item to likely files via `sdd/constitution/folder-structure.md` (and `Glob`/`Grep` only as a last resort).
@@ -214,7 +214,7 @@ This requires Jira mode (`tracker: "jira"` in `sdd/config.json`): each goal is a
 
 ## Phase 6: Planning PR
 
-22. Offer (AskUserQuestion) to commit the planning artifacts in their own PR per `sdd/README.md` § Committing planning artifacts, with `<change>` = `$CHANGE_NAME` and the commit `docs(sdd): plan $CHANGE_NAME [$ARGUMENTS]`. Paths: `openspec/changes/$CHANGE_NAME/` and `sdd/tasks/$CHANGE_NAME.md`. VCS operations come from `sdd/trackers/<vcs>.md` (`vcs` in `sdd/config.json`). When `DRY_RUN`, print the branch, paths and commit message only.
+22. Offer (AskUserQuestion) to commit the planning artifacts in their own PR per `sdd/docs/planning-prs.md`, with `<change>` = `$CHANGE_NAME` and the commit `docs(sdd): plan $CHANGE_NAME [$ARGUMENTS]`. Paths: `openspec/changes/$CHANGE_NAME/` and `sdd/tasks/$CHANGE_NAME.md`. VCS operations come from `sdd/trackers/<vcs>.md` (`vcs` in `sdd/config.json`). When `DRY_RUN`, print the branch, paths and commit message only.
 
 ## Rules
 

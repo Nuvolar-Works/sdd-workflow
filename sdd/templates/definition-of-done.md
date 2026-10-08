@@ -53,7 +53,7 @@ Each block is what gets inlined into the work-item body's `## Definition of Done
 
 ```
 - All Acceptance Criteria above are met
-- Request/response (or message) shapes modelled from the interface contract (see `sdd/README.md` § Interface contracts), placed per `sdd/constitution/folder-structure.md`
+- Request/response (or message) shapes modelled from the interface contract (see `sdd/docs/interface-contracts.md`), placed per `sdd/constitution/folder-structure.md`
 - Failure outcomes the contract documents are handled
 - Test doubles match the contract
 - Tests cover happy path + at least one failure path

@@ -175,7 +175,7 @@ PRD file expected at: `sdd/prds/<feature-slug>-v1.md` (fallbacks: `sdd/prds/<fea
 
 ## Phase 5: Planning PR
 
-24. Offer (AskUserQuestion) to commit the planning artifacts of **all stages created in this run** in one PR per `sdd/README.md` § Committing planning artifacts, with `<change>` = `<feature-slug>`. Paths: each `openspec/changes/<feature-slug>-NN-<slug>/`, each `sdd/tasks/<feature-slug>-NN-<slug>.md`, `sdd/tasks/<feature-slug>-stages.md`, and the PRD under `sdd/prds/` when it is untracked. VCS operations come from `sdd/trackers/<vcs>.md`. When `DRY_RUN`, print the branch, paths and commit message only.
+24. Offer (AskUserQuestion) to commit the planning artifacts of **all stages created in this run** in one PR per `sdd/docs/planning-prs.md`, with `<change>` = `<feature-slug>`. Paths: each `openspec/changes/<feature-slug>-NN-<slug>/`, each `sdd/tasks/<feature-slug>-NN-<slug>.md`, `sdd/tasks/<feature-slug>-stages.md`, and the PRD under `sdd/prds/` when it is untracked. VCS operations come from `sdd/trackers/<vcs>.md`. When `DRY_RUN`, print the branch, paths and commit message only.
 
 ## Rules
 

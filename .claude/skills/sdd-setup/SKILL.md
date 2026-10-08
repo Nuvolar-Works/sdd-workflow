@@ -41,7 +41,7 @@ For each missing piece, ask the user before acting. Run them in this order:
 Always run (no-clobber; fills in any missing files):
 
 ```bash
-mkdir -p sdd/{constitution,prds,apis,tasks,trackers,templates}
+mkdir -p sdd/{constitution,prds,apis,tasks,trackers,templates,docs}
 ```
 
 Then copy seed files from this skill's bundle to `sdd/`:
@@ -55,6 +55,7 @@ cp -n "$SEED/prd-template-mini.md" sdd/prd-template-mini.md
 cp -n "$SEED/trackers/"*.md sdd/trackers/
 cp -n -p "$SEED/trackers/"*.sh sdd/trackers/
 cp -n "$SEED/templates/"*.md sdd/templates/
+cp -n "$SEED/docs/"*.md sdd/docs/
 ```
 
 `cp -n` skips overwrite — only fills in genuinely missing files (`-p` keeps the helper scripts executable).

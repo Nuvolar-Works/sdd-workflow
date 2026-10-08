@@ -2,35 +2,33 @@
 
 A workflow that drives PRDs and Jira stories through OpenSpec into trackable tickets, then implements with built-in code review and a sweep that archives changes after merge. Designed for 1-N developer teams.
 
-Copy `.claude/skills/sdd-*/` and `.claude/skills/openspec-*/` into any project, then run `/sdd-setup` — it seeds `sdd/` from its own bundle and wires up tracker auth.
-
-## Quickstart
-
-```
-/sdd-setup
-```
-
-Detects what's missing, scaffolds `sdd/`, runs `openspec init`, asks for tracker (GitHub or Jira), wires up MCPs, optionally chains into `/sdd-constitution` for project standards. Idempotent — safe to re-run.
-
-## Workflow
-
 ```
 PRD ──► OpenSpec change ──► tickets ──► implementation ──► verify ──► merge ──► sweep
         (proposal/specs/    (GitHub or Jira)           (PR)         (/sdd-status)
          design/tasks)
 ```
 
-Two modes, controlled by `sdd/config.json`:
+## Getting started
+
+Copy `.claude/skills/sdd-*/` and `.claude/skills/openspec-*/` into any project, then:
+
+1. `/sdd-setup` — detects what's missing, scaffolds `sdd/` from its own bundle, runs `openspec init`, asks for the tracker, wires up MCPs. Idempotent — safe to re-run.
+2. `/sdd-constitution` — interview that writes your stack, coding principles and quality gates to `sdd/constitution/`.
+3. `/sdd-doctor` — read-only pre-flight check, any time.
+
+## Modes
+
+Set once in `sdd/config.json` — details in [docs/trackers.md](docs/trackers.md).
 
 | Mode | tracker | vcs | Tickets | Code/PRs |
 |------|---------|-----|---------|----------|
 | GitHub | github | github | GitHub Issues | GitHub |
 | Jira | jira | github | Jira | GitHub (PRs reference Jira keys; statuses synced to Jira) |
-| Jira + Bitbucket | jira | bitbucket | Jira | Bitbucket Cloud (REST via `sdd/trackers/bitbucket.sh`; API token in env vars) |
+| Jira + Bitbucket | jira | bitbucket | Jira | Bitbucket Cloud |
 
 The Jira mode was formerly called Hybrid.
 
-## PRD decision tree
+## Which entry point?
 
 | Situation | Skill | Input |
 |-----------|-------|-------|
@@ -39,51 +37,67 @@ The Jira mode was formerly called Hybrid.
 | Single Jira user story | `/sdd-tasks-from-story <KEY>` | the story itself (the skill generates the spec) |
 | Trivial fix | `/openspec-propose "fix X"` then `/sdd-create-tickets <change>` | none |
 
-Versioning: `<slug>-v1.md`, `<slug>-v2-<scope>.md`, `<slug>-v2-1-<scope>.md`. Each version is a separate `/sdd-from-prd` run; living specs in `openspec/specs/` accumulate across versions so v2 builds on v1 without re-stating it.
+Then, for every ticket: `/sdd-work <ticket>` → `/sdd-verify` → review and merge → `/sdd-status`. Walkthrough in [docs/workflow.md](docs/workflow.md); PRD writing and versioning in [docs/prds.md](docs/prds.md).
 
 ## Skills
 
-All `sdd-*` skills except `/sdd-setup` accept `--dry-run` (preview mode — see Reference below); the openspec-* skills do not. Required args in `<angle brackets>`, optional in `[square brackets]`.
+All `sdd-*` skills except `/sdd-setup` accept `--dry-run` ([docs/workflow.md § Dry-run](docs/workflow.md#dry-run)); the openspec-* skills do not. Required args in `<angle brackets>`, optional in `[square brackets]`.
 
 **Bootstrap & admin**
 
 | Skill | Purpose |
 |-------|---------|
 | `/sdd-setup` | Configure tracker, MCPs, scaffold `sdd/`, run `openspec init`. |
-| `/sdd-constitution [project-name]` | Interview to write `sdd/constitution/*.md`. |
-| `/sdd-doctor` | Pre-flight diagnostic. Read-only. |
-| `/sdd-status` | Project snapshot + post-merge Completion Sweep. |
+| `/sdd-constitution [project-name]` | Detect codebase signals, interview, write `sdd/constitution/*.md`. |
+| `/sdd-doctor` | Pre-flight diagnostic: config, tracker reachability, tools, OpenSpec state. Read-only. |
+| `/sdd-status` | Project snapshot + post-merge [Completion Sweep](docs/archiving.md). |
 
 **Planning**
 
 | Skill | Purpose |
 |-------|---------|
-| `/sdd-from-prd <slug>` | PRD → OpenSpec artifacts → tickets. |
-| `/sdd-staged <slug>` | Multi-stage variant of `/sdd-from-prd`. |
-| `/sdd-tasks-from-story <KEY>` | Jira story → OpenSpec change + one board-visible Task per goal, linked to the story. |
-| `/sdd-create-tickets <change>` | OpenSpec tasks.md → tickets (standalone). |
+| `/sdd-from-prd <slug>` | PRD → OpenSpec artifacts → design challenge → tickets. |
+| `/sdd-staged <slug>` | Multi-stage variant of `/sdd-from-prd`: proposes stages, cross-references tickets. |
+| `/sdd-tasks-from-story <KEY>` | Jira story → OpenSpec change + one board-visible Task per goal, linked to the story. Jira mode only. |
+| `/sdd-create-tickets <change>` | OpenSpec `tasks.md` → tickets with GIVEN-WHEN-THEN criteria (standalone). |
 
 **Implementation**
 
 | Skill | Purpose |
 |-------|---------|
 | `/sdd-work <ticket>` | Pick up a ticket. Self-detects Fresh / Resume / Fix-from-PR mode. |
-| `/sdd-verify [ticket]` | AC + code review + project checks → PR. |
+| `/sdd-verify [ticket]` | Acceptance criteria + quality gates + code review → PR. Ticket auto-detected from the branch. |
 
-**OpenSpec**
+**OpenSpec** (SDD-customised)
 
 | Skill | Purpose |
 |-------|---------|
-| `/openspec-propose "description"` | Free-form artifact creation. |
-| `/openspec-apply-change <change>` | Implement directly from artifacts. |
-| `/openspec-archive-change <change>` | Finalise via `openspec archive` → update living specs. |
+| `/openspec-propose "description"` | Free-form artifact creation: proposal, specs, design, tasks. |
+| `/openspec-apply-change [change]` | Implement directly from artifacts (alternative to the ticket flow). |
+| `/openspec-archive-change [change]` | Finalise via the [archiving procedure](docs/archiving.md#archiving-procedure) → update living specs. |
 | `/openspec-explore` | Thinking partner for clarifying requirements. |
+
+## Guides
+
+| Guide | Covers |
+|-------|--------|
+| [docs/workflow.md](docs/workflow.md) | The four paths, the work → verify → status loop, dry-run |
+| [docs/prds.md](docs/prds.md) | Writing PRDs, versioning, staged greenfield |
+| [docs/review-gates.md](docs/review-gates.md) | Design challenge, code review, constitution enforcement |
+| [docs/collaboration.md](docs/collaboration.md) | Ticket comments, parallel developers, re-running planning skills |
+| [docs/planning-prs.md](docs/planning-prs.md) | Committing planning artifacts in their own PR |
+| [docs/archiving.md](docs/archiving.md) | Completion Sweep and the safe archiving procedure |
+| [docs/interface-contracts.md](docs/interface-contracts.md) | API / event contracts: where they live, precedence |
+| [docs/trackers.md](docs/trackers.md) | Modes, `config.json`, Bitbucket auth |
+| [docs/git-conventions.md](docs/git-conventions.md) | Branches, commits, PRs |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Common problems and fixes |
 
 ## Folder layout
 
 ```
 sdd/
 ├── README.md                ← you are here
+├── docs/                    ← the guides above
 ├── config.json              ← tracker + VCS selection (config.example.json for reference)
 ├── constitution/            ← project standards split into one file per concern
 ├── prds/                    ← versioned PRDs
@@ -96,99 +110,6 @@ sdd/
 ```
 
 `openspec/` lives at the repo root (not under `sdd/`) — that's where the OpenSpec CLI expects it. `/sdd-setup` runs `openspec init --tools none` if `openspec/specs/` is missing.
-
----
-
-## Reference
-
-Pointers to the design choices behind the workflow. The detail lives in skill files and templates; these subsections are navigation, not docs.
-
-### Comments — first-class workflow citizens
-
-`/sdd-work` reads work-item and parent-story comments on entry, then during implementation prompts opt-in (`yes` / `edit` / `skip`) to post one of five named shapes:
-
-| Shape | When |
-|-------|------|
-| Decision | Implementation diverges from `design.md` or the ticket body. |
-| Blocker | External dependency surfaced (API not ready, missing infra). |
-| Follow-up | Known future work left as a placeholder. |
-| Clarification | Outstanding question got answered. |
-| Closing summary | End-of-implementation overview before `/sdd-verify`. |
-
-Blockers and Follow-ups also offer to create a tracked follow-up ticket via `CreateRelatedTicket` (`is_blocked_by` in Jira, emulated `Blocked by #N` body footer in GitHub).
-
-Detail: [`templates/ticket-comment-shapes.md`](templates/ticket-comment-shapes.md), [`templates/work-discovery-comments.md`](templates/work-discovery-comments.md), [`templates/story-comment-triage.md`](templates/story-comment-triage.md).
-
-### Concurrency — N developers per change
-
-`tasks.md` is a derived view, not a control surface — ticket status is the single source of truth. `/sdd-work` does not write checkbox state during implementation (granular per-edit writes caused conflicts). Instead, `/sdd-verify` checks off **only the current ticket's own section** just before opening the PR, so the flip ships inside the feature PR rather than as a separate post-merge commit. Because each work item touches only its own section, parallel work on the same change stays conflict-free. `/sdd-status`'s Completion Sweep (Class C) then reconciles any residual drift from ticket statuses (idempotent — usually a no-op).
-
-| Team size | Behaviour |
-|-----------|-----------|
-| 1 dev | Run `/sdd-work` and `/sdd-verify`; `/sdd-status` periodically. |
-| 2-N devs, different work items | Parallel work, no shared writes during implementation. |
-| 2 devs, same work item | Code-level git conflicts still on you. SDD assumes one dev per ticket per branch. |
-
-### Re-run safety
-
-The four ticket-creating skills detect existing state in Phase 0.5 and prompt **Continue** (default — skip what exists, fill gaps) / **Regenerate** (per-file diff before overwrite) / **Abort**. Re-running after editing a PRD or story is safe; you have to explicitly opt into Regenerate to overwrite anything.
-
-### Completion Sweep
-
-Post-merge, run `/sdd-status`. Walks active changes and offers (with prompts):
-
-- **Class A** — archive changes with all tickets done (via the § Archiving procedure below).
-- **Class B** — close parent stories with all linked work items done (status transition + Closing Summary comment).
-- **Class C** — reconcile `tasks.md` checkboxes against ticket statuses (backstop for drift; `/sdd-verify` does the primary per-section flip). Always safe; offered separately.
-
-### Archiving
-
-`openspec archive` is not transactional: when one capability fails validation after others were already written, those writes stay in `openspec/specs/`, the CLI may still print "No files were changed" and exit 0, and a retry then fails with "ADDED already exists". Both archive paths (`/openspec-archive-change` step 5 and `/sdd-status` Class A) run this procedure per change instead of calling the CLI bare:
-
-1. **Pre-flight (read-only).** For each `openspec/changes/<name>/specs/<cap>/` whose living spec `openspec/specs/<cap>/spec.md` exists, run `openspec validate <cap> --type spec --no-interactive`. Also confirm `openspec/changes/archive/<YYYY-MM-DD>-<name>/` does not exist yet. On any failure, report it and do not archive. A failing living spec needs `## Purpose` plus `## Requirements` with `### Requirement:` blocks and no `ADDED`/`MODIFIED`/`REMOVED`/`RENAMED` headers — the user repairs it; never repair it automatically.
-2. **Snapshot.** Copy `openspec/specs/` to a temp dir (`SNAP=$(mktemp -d) && cp -R openspec/specs "$SNAP/"`). Skip when archiving with `--skip-specs`.
-3. **Archive.** `openspec archive <name> --yes [--skip-specs]`.
-4. **Judge success on disk**, not by exit code or output text: `openspec/changes/<name>/` is gone and the archive dir exists. On failure, restore the snapshot wholesale (`rm -rf openspec/specs && cp -R "$SNAP/specs" openspec/specs`), which also removes capability dirs the failed run created. Show the CLI output verbatim.
-5. **Mapping.** Only after step 4 confirms success, rename `sdd/tasks/<name>.md` to `sdd/tasks/<name>.archived.md`.
-
-Under `--dry-run`, run step 1 only and print `[DRY RUN] would archive <name>` or `[DRY RUN] would skip <name>: <reason>`.
-
-### Committing planning artifacts
-
-Planning skills write files every developer needs on the base branch: `openspec/changes/<change>/`, `sdd/tasks/<change>.md` (and `<feature>-stages.md`), and the PRD under `sdd/prds/` when it is new. Left uncommitted, they get swept into unrelated feature PRs. At the end of `/sdd-from-prd`, `/sdd-staged`, `/sdd-tasks-from-story` and `/sdd-create-tickets`, the skill offers (AskUserQuestion) to ship them in their own PR:
-
-1. Note the current branch, then `CreateBranch(docs/plan-<change>, <base>)` — uncommitted planning files carry over.
-2. `git add` the planning paths explicitly (never `-A` or `.`) and commit `docs(sdd): plan <change>` (append the story ref when there is one).
-3. `PushBranch`, then `CreatePR` with the base branch as target and the list of planned tickets as the body.
-4. Check out the original branch again.
-
-Merge the planning PR before starting work items, so feature branches build on the committed plan. `/sdd-status` offers the same after a sweep that archived changes or regenerated `tasks.md`, on `chore/sdd-sweep-<YYYY-MM-DD>` with `chore(sdd): archive completed changes`. Under `--dry-run`, print the branch, paths and commit message instead.
-
-### Interface contracts
-
-An interface contract is a machine-readable schema for an interface whose other side is not built or tested in this repo — another team's API, an external service, an event stream (OpenAPI, GraphQL SDL, `.proto`, AsyncAPI, JSON Schema, …). In-repo schemas the toolchain already enforces (ORM models, platform object metadata, data-model definitions) don't count.
-
-- **Where it lives.** The maintained source is `sdd/apis/` (the contract itself, or a short pointer file to where it lives) or the path/URL a PRD's `## API Contract` section references. `openspec/changes/<change>/api-contract.*` is a snapshot taken when the change was created — use it only when no maintained source is available. If the two disagree on something in scope, report contract drift rather than picking one.
-- **Precedence.** On shape — operation and field names, types, optionality, enum values, documented outcomes — the contract beats prose (`design.md`, other teams' ticket text, story text). The PRD still wins on scope.
-- **Used by** `/sdd-tasks-from-story` (design and codebase audit) and `/sdd-verify` (code-review checklist § 7).
-
-### Dry-run
-
-All `sdd-*` skills except `/sdd-setup` accept `--dry-run`; the openspec-* skills do not. Reads always run; tracker writes are mocked with `[DRY RUN] would <op>(<args>)` lines and synthetic `DRY-N` ids for downstream wiring. Branch / push / PR creation skipped. `/sdd-work` halts after the plan — no code edits. Local OpenSpec artifacts are written (git-revertable); mapping and stage-map files and tasks.md annotations are only printed.
-
-## Configuration
-
-`sdd/config.json` is the single source of truth. See `sdd/config.example.json` for the full shape.
-
-## Maintenance (sdd-workflow source repo only)
-
-After editing anything under `sdd/templates/`, `sdd/trackers/`, or the top-level scaffold (`config.example.json`, `README.md`, `prd-template*.md`):
-
-```bash
-bash sdd/scripts/sync-seed.sh
-```
-
-Idempotent. Keeps the `/sdd-setup` seed bundle in sync so a fresh project gets the latest.
 
 ## Migration from the legacy layout
 
